@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Edit, Clock, ExternalLink, Loader2 } from 'lucide-react';
 import { getPage, getBlocks, getPageTitle, type NotionPage, type NotionBlock } from '../lib/notion';
@@ -17,6 +17,40 @@ export default function PageView() {
   const [hasMore, setHasMore] = useState(false);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const observerRef = useRef<HTMLDivElement>(null);
+
+  // Load more blocks function (shared between infinite scroll and TOC navigation)
+  const loadMoreBlocks = useCallback(async (): Promise<boolean> => {
+    if (!hasMore || !nextCursor || loadingMore || !id) return false;
+    
+    setLoadingMore(true);
+    try {
+      const response = await fetch(`/api/notion/v1/blocks/${id}/children?start_cursor=${nextCursor}&page_size=100`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-notion-token': localStorage.getItem('notion_api_token') || '',
+          'x-notion-version': '2026-03-11',
+        },
+      });
+      
+      if (!response.ok) throw new Error('Failed to load more blocks');
+      
+      const data = await response.json() as { results: NotionBlock[]; has_more: boolean; next_cursor: string | null };
+      const newBlocks = data.results;
+      
+      setBlocks(prev => [...prev, ...newBlocks]);
+      setMarkdown(prev => prev + '\n' + blocksToMarkdown(newBlocks));
+      setHasMore(data.has_more);
+      setNextCursor(data.next_cursor);
+      
+      return data.has_more;
+    } catch (err) {
+      console.error('Failed to load more blocks:', err);
+      return false;
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [hasMore, nextCursor, loadingMore, id]);
 
   useEffect(() => {
     if (!id) return;
@@ -51,31 +85,7 @@ export default function PageView() {
     const observer = new IntersectionObserver(
       async (entries) => {
         if (entries[0].isIntersecting && hasMore && nextCursor && !loadingMore) {
-          setLoadingMore(true);
-          try {
-            const response = await fetch(`/api/notion/v1/blocks/${id}/children?start_cursor=${nextCursor}&page_size=100`, {
-              method: 'GET',
-              headers: {
-                'Content-Type': 'application/json',
-                'x-notion-token': localStorage.getItem('notion_api_token') || '',
-                'x-notion-version': '2026-03-11',
-              },
-            });
-            
-            if (!response.ok) throw new Error('Failed to load more blocks');
-            
-            const data = await response.json() as { results: NotionBlock[]; has_more: boolean; next_cursor: string | null };
-            const newBlocks = data.results;
-            
-            setBlocks(prev => [...prev, ...newBlocks]);
-            setMarkdown(prev => prev + '\n' + blocksToMarkdown(newBlocks));
-            setHasMore(data.has_more);
-            setNextCursor(data.next_cursor);
-          } catch (err) {
-            console.error('Failed to load more blocks:', err);
-          } finally {
-            setLoadingMore(false);
-          }
+          await loadMoreBlocks();
         }
       },
       { 
@@ -203,7 +213,11 @@ export default function PageView() {
         {/* Table of Contents */}
         <aside className="hidden xl:block w-64 flex-shrink-0">
           <div className="sticky top-20">
-            <TableOfContents content={markdown} />
+            <TableOfContents 
+              content={markdown} 
+              onLoadMore={loadMoreBlocks}
+              hasMore={hasMore}
+            />
           </div>
         </aside>
       </div>

@@ -8,9 +8,11 @@ interface TocItem {
 
 interface TableOfContentsProps {
   content: string;
+  onLoadMore?: () => Promise<boolean>;
+  hasMore?: boolean;
 }
 
-export default function TableOfContents({ content }: TableOfContentsProps) {
+export default function TableOfContents({ content, onLoadMore, hasMore }: TableOfContentsProps) {
   const [headings, setHeadings] = useState<TocItem[]>([]);
   const [activeId, setActiveId] = useState<string>('');
 
@@ -56,7 +58,7 @@ export default function TableOfContents({ content }: TableOfContentsProps) {
           }
         });
       },
-      { rootMargin: '-80px 0px -80% 0px' }
+      { rootMargin: '-100px 0px -66% 0px', threshold: 0 }
     );
 
     // Observe all heading elements
@@ -66,11 +68,30 @@ export default function TableOfContents({ content }: TableOfContentsProps) {
     return () => observer.disconnect();
   }, [headings]);
 
-  const handleClick = (e: React.MouseEvent, id: string) => {
+  const handleClick = async (e: React.MouseEvent, id: string) => {
     e.preventDefault();
-    const element = document.getElementById(id);
+    
+    // Try to find the element
+    let element = document.getElementById(id);
+    
+    // If element doesn't exist and we have more content to load, keep loading
+    if (!element && hasMore && onLoadMore) {
+      let attempts = 0;
+      const maxAttempts = 10; // Prevent infinite loop
+      
+      while (!element && hasMore && attempts < maxAttempts) {
+        const hasMoreAfterLoad = await onLoadMore();
+        // Wait a bit for DOM to update
+        await new Promise(resolve => setTimeout(resolve, 100));
+        element = document.getElementById(id);
+        attempts++;
+        
+        if (!hasMoreAfterLoad) break;
+      }
+    }
+    
     if (element) {
-      const offset = 80; // Account for sticky header
+      const offset = 100; // Account for sticky header
       const elementPosition = element.getBoundingClientRect().top;
       const offsetPosition = elementPosition + window.pageYOffset - offset;
 
@@ -81,12 +102,23 @@ export default function TableOfContents({ content }: TableOfContentsProps) {
     }
   };
 
+  const handleTocScroll = (e: React.UIEvent<HTMLElement>) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    // If scrolled near the bottom of TOC (within 50px), trigger load more
+    if (scrollHeight - scrollTop - clientHeight < 50 && hasMore && onLoadMore) {
+      onLoadMore();
+    }
+  };
+
   if (headings.length === 0) {
     return null;
   }
 
   return (
-    <nav className="sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto">
+    <nav 
+      className="sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto"
+      onScroll={handleTocScroll}
+    >
       <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
         On this page
       </div>
