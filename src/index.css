@@ -4,13 +4,15 @@
 /* Shiki syntax highlighting styles */
 .shiki-container {
   position: relative;
+  margin: 1rem 0;
 }
 
 .shiki-container pre {
-  margin: 0 !important;
-  padding: 1rem !important;
-  border-radius: 0.5rem !important;
+  margin: 0;
+  padding: 1rem;
+  border-radius: 0.5rem;
   overflow-x: auto;
+  background-color: rgb(17 24 39) !important;
 }
 
 .shiki-container code {
@@ -32,9 +34,18 @@
   background-color: rgb(31 41 55);
 }
 
-/* Remove default prose pre styles that conflict with shiki */
+/* Regular code blocks (without shiki) */
 .prose pre {
-  background: transparent !important;
-  padding: 0 !important;
-  margin: 0 !important;
+  background-color: rgb(17 24 39);
+  color: rgb(243 244 246);
+  padding: 1rem;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  margin: 1rem 0;
+}
+
+.prose pre code {
+  background: transparent;
+  padding: 0;
+  color: inherit;
 }

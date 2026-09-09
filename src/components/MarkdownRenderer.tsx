@@ -121,15 +121,7 @@ export default function MarkdownRenderer({ content }: MarkdownRendererProps) {
       [&_table]:w-full [&_table]:border [&_th]:border [&_th]:px-3 [&_th]:py-2 [&_th]:bg-gray-100 dark:[&_th]:bg-gray-800 [&_td]:border [&_td]:px-3 [&_td]:py-2
       [&_.katex-display]:my-4 [&_.katex-display]:overflow-x-auto [&_.katex-display]:overflow-y-hidden
       prose-code:text-sm prose-code:font-mono
-      prose-code:bg-gray-100 dark:prose-code:bg-gray-800
-      prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded
-      prose-code:before:content-none prose-code:after:content-none
-      prose-pre:bg-transparent! prose-pre:p-0! prose-pre:m-0!
-      [&_.shiki-container]:my-4
-      [&_.shiki-container_pre]:!bg-gray-900! [&_.shiki-container_pre]:!p-4! [&_.shiki-container_pre]:!m-0!
-      [&_.shiki-container_pre]:!rounded-lg! [&_.shiki-container_pre]:!overflow-x-auto!
-      [&_.shiki-container_pre_code]:!bg-transparent! [&_.shiki-container_pre_code]:!p-0!
-      [&_.shiki-container_pre_code]:text-sm! [&_.shiki-container_pre_code]:leading-relaxed!">
+      prose-code:before:content-none prose-code:after:content-none">
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkMath]}
         rehypePlugins={[rehypeKatex]}
