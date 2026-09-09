@@ -30,8 +30,17 @@
   font-size: 0.875rem;
 }
 
-.dark .prose :not(pre) > code {
-  background-color: rgb(31 41 55);
+/* Dark mode override - both class-based and media query */
+@media (prefers-color-scheme: dark) {
+  .prose :not(pre) > code {
+    background-color: rgb(55 65 81) !important;
+    color: rgb(243 244 246) !important;
+  }
+}
+
+html.dark .prose :not(pre) > code {
+  background-color: rgb(55 65 81) !important;
+  color: rgb(243 244 246) !important;
 }
 
 /* Regular code blocks (without shiki) */

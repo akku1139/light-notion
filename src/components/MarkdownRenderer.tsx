@@ -32,6 +32,24 @@ interface MarkdownRendererProps {
   content: string;
 }
 
+// Helper to extract text content from React children
+function extractTextContent(children: React.ReactNode): string {
+  if (typeof children === 'string') {
+    return children;
+  }
+  if (typeof children === 'number') {
+    return String(children);
+  }
+  if (Array.isArray(children)) {
+    return children.map(extractTextContent).join('');
+  }
+  if (children && typeof children === 'object' && 'props' in children) {
+    const props = children.props as { children?: React.ReactNode };
+    return extractTextContent(props.children);
+  }
+  return '';
+}
+
 // Custom code block component that uses shiki
 function CodeBlock({ className, children, ...props }: {
   className?: string;
@@ -40,7 +58,7 @@ function CodeBlock({ className, children, ...props }: {
 }) {
   const match = /language-(\w+)/.exec(className || '');
   const lang = match ? match[1] : '';
-  const code = String(children).replace(/\n$/, '');
+  const code = extractTextContent(children).replace(/\n$/, '');
 
   const [highlightedHtml, setHighlightedHtml] = useState<string | null>(null);
   const codeRef = useRef(code);
@@ -131,6 +149,7 @@ export default function MarkdownRenderer({ content }: MarkdownRendererProps) {
             const child = Array.isArray(children) ? children[0] : children;
             if (child && typeof child === 'object' && 'props' in child) {
               const codeProps = child.props as { className?: string; children?: React.ReactNode };
+              // Pass the actual children (could be string or React element)
               return (
                 <CodeBlock className={codeProps.className}>
                   {codeProps.children}
@@ -145,6 +164,7 @@ export default function MarkdownRenderer({ content }: MarkdownRendererProps) {
             if (isBlock) {
               return <CodeBlock className={className}>{children}</CodeBlock>;
             }
+            // For inline code, render children as-is
             return (
               <code className={className} {...props}>
                 {children}
