@@ -40,47 +40,58 @@ function richTextToMarkdown(items: RichTextItem[]): string {
 
 import { getBlocks } from './notion';
 
-// Resolve reference-style links like:
-// [1]: link title: https://link.org/
-// into inline links: [1](https://link.org/)
+// Resolve reference-style links from Notion
+// Notion format: [[1]](1) in text, [[1]](1): [Title](URL) in definitions
+// Standard format: [1] in text, [1]: URL in definitions
 export function resolveReferenceLinks(text: string): string {
   const refLinks: Record<string, string> = {};
   
-  // Match reference definitions: [ref]: url or [ref]: title: url
-  const refDefRegex = /^\[([^\]]+)\]:\s+(.+)$/gm;
+  // Step 1: Normalize [[N]](N) to [N]
+  let normalized = text.replace(/\[\[(\d+)\]\]\(\d+\)/g, '[$1]');
+  
+  // Step 2: Match reference definitions
+  // Formats:
+  // - [N]: [Title](URL)
+  // - [N]: URL
+  // - [N]: title: URL
+  const refDefRegex = /^\[(\d+)\]:\s+(.+)$/gm;
   let match;
   
-  // First pass: collect all reference definitions
-  const textCopy = text;
-  while ((match = refDefRegex.exec(textCopy)) !== null) {
+  while ((match = refDefRegex.exec(normalized)) !== null) {
     const ref = match[1];
-    let url = match[2].trim();
+    const content = match[2].trim();
+    let url = '';
     
-    // Handle "title: url" format (e.g., "link title: https://link.org/")
-    const titleMatch = url.match(/^(.+?):\s+(https?:\/\/\S+)$/);
-    if (titleMatch) {
-      url = titleMatch[2];
+    // Try to extract URL from [Title](URL) format
+    const markdownLinkMatch = content.match(/^\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)$/);
+    if (markdownLinkMatch) {
+      url = markdownLinkMatch[2];
+    } else {
+      // Try title: URL format
+      const titleUrlMatch = content.match(/^(.+?):\s+(https?:\/\/\S+)$/);
+      if (titleUrlMatch) {
+        url = titleUrlMatch[2];
+      } else if (content.match(/^https?:\/\//)) {
+        // Direct URL
+        url = content;
+      }
     }
     
-    // Only accept valid URLs
-    if (url.match(/^https?:\/\//)) {
+    if (url) {
       refLinks[ref] = url;
     }
   }
   
-  // Second pass: remove reference definitions
-  let result = text.replace(refDefRegex, '').trim();
+  // Step 3: Remove reference definitions
+  normalized = normalized.replace(refDefRegex, '').trim();
   
-  // Third pass: replace references with inline links
+  // Step 4: Replace references with inline links
   for (const [ref, url] of Object.entries(refLinks)) {
-    // Escape special regex characters in ref
-    const escapedRef = ref.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    // Match [ref] but not [ref](url) - negative lookahead for (
-    const refRegex = new RegExp(`\\[${escapedRef}\\](?!\\()`, 'g');
-    result = result.replace(refRegex, `[${ref}](${url})`);
+    const refRegex = new RegExp(`\\[${ref}\\](?!\\()`, 'g');
+    normalized = normalized.replace(refRegex, `[${ref}](${url})`);
   }
   
-  return result;
+  return normalized;
 }
 
 export async function blocksToMarkdown(blocks: NotionBlock[]): Promise<string> {
