@@ -34,6 +34,11 @@ export default function TableOfContents({ content, onLoadMore, hasMore }: TableO
         .replace(/-+/g, '-')
         .trim();
       
+      // Handle empty ID
+      if (!id) {
+        id = 'heading';
+      }
+      
       // Handle duplicate IDs by adding a counter
       if (idCounts[id] !== undefined) {
         idCounts[id]++;

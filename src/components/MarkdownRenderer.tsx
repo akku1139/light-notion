@@ -43,9 +43,14 @@ function extractTextContent(children: React.ReactNode): string {
   if (Array.isArray(children)) {
     return children.map(extractTextContent).join('');
   }
-  if (children && typeof children === 'object' && 'props' in children) {
-    const props = children.props as { children?: React.ReactNode };
-    return extractTextContent(props.children);
+  if (children && typeof children === 'object') {
+    // Handle React elements
+    if ('props' in children) {
+      const props = children.props as { children?: React.ReactNode };
+      return extractTextContent(props.children);
+    }
+    // Handle other objects (shouldn't happen, but just in case)
+    return '';
   }
   return '';
 }
@@ -138,6 +143,11 @@ export default function MarkdownRenderer({ content }: MarkdownRendererProps) {
       .replace(/-+/g, '-')
       .trim();
     
+    // Handle empty ID
+    if (!id) {
+      id = 'heading';
+    }
+    
     // Handle duplicate IDs by adding a counter
     if (headingIdCounts.current[id] !== undefined) {
       headingIdCounts.current[id]++;
@@ -196,17 +206,17 @@ export default function MarkdownRenderer({ content }: MarkdownRendererProps) {
               </code>
             );
           },
-          h1({ children, ...props }) {
+          h1({ children, node, ...props }) {
             const text = extractTextContent(children);
             const id = generateHeadingId(text);
             return <h1 id={id} {...props}>{children}</h1>;
           },
-          h2({ children, ...props }) {
+          h2({ children, node, ...props }) {
             const text = extractTextContent(children);
             const id = generateHeadingId(text);
             return <h2 id={id} {...props}>{children}</h2>;
           },
-          h3({ children, ...props }) {
+          h3({ children, node, ...props }) {
             const text = extractTextContent(children);
             const id = generateHeadingId(text);
             return <h3 id={id} {...props}>{children}</h3>;
