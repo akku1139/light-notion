@@ -89,8 +89,8 @@ export default function SearchPage() {
                   >
                     <div className="flex items-start gap-3">
                       <div className="flex-shrink-0 mt-0.5">
-                        {page.icon && 'emoji' in (page.icon || {}) ? (
-                          <span className="text-2xl">{(page.icon as { emoji: string }).emoji}</span>
+                        {page.icon && page.icon.type === 'emoji' ? (
+                          <span className="text-2xl">{page.icon.emoji}</span>
                         ) : (
                           <FileText size={24} className="text-gray-400" />
                         )}

@@ -3,7 +3,20 @@ import { getToken } from './auth';
 const API_BASE = '/api/notion';
 
 // Notion API version
-const NOTION_VERSION = '2022-06-28';
+const NOTION_VERSION = '2026-03-11';
+
+// Re-export useful types from the SDK
+export type {
+  PageObjectResponse,
+  DatabaseObjectResponse,
+  BlockObjectResponse,
+  PartialBlockObjectResponse,
+} from '@notionhq/client';
+
+// Type aliases for convenience
+export type NotionPage = import('@notionhq/client').PageObjectResponse;
+export type NotionDatabase = import('@notionhq/client').DatabaseObjectResponse;
+export type NotionBlock = import('@notionhq/client').BlockObjectResponse | import('@notionhq/client').PartialBlockObjectResponse;
 
 interface NotionRequestOptions {
   method?: string;
@@ -27,60 +40,22 @@ async function notionRequest(endpoint: string, options: NotionRequestOptions = {
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: response.statusText }));
-    throw new Error(error.message || `API error: ${response.status}`);
+    const errorData = await response.json().catch(() => ({ message: response.statusText })) as { message?: string; details?: string };
+    throw new Error(errorData.message || errorData.details || `API error: ${response.status}`);
   }
 
   return response.json();
 }
 
-// Database types
-export interface NotionDatabase {
-  id: string;
-  title: Array<{ plain_text: string }>;
-  icon?: { emoji?: string; external?: { url: string } };
-  properties: Record<string, unknown>;
-}
-
-export interface NotionPage {
-  id: string;
-  object: 'page';
-  created_time: string;
-  last_edited_time: string;
-  properties: Record<string, NotionProperty>;
-  icon?: { emoji?: string; external?: { url: string } };
-  cover?: { external?: { url: string }; file?: { url: string } };
-  url: string;
-}
-
-export interface NotionProperty {
-  id: string;
-  type: string;
-  title?: Array<{ plain_text: string }>;
-  rich_text?: Array<{ plain_text: string }>;
-  [key: string]: unknown;
-}
-
-export interface NotionBlock {
-  id: string;
-  type: string;
-  has_children: boolean;
-  [key: string]: unknown;
-}
-
-export interface SearchResult {
-  object: 'list';
-  results: Array<NotionPage | NotionDatabase>;
-  has_more: boolean;
-  next_cursor: string | null;
-}
-
 // API functions
-export async function queryDatabase(databaseId: string, filter?: unknown, sorts?: unknown): Promise<{ results: NotionPage[]; has_more: boolean; next_cursor: string | null }> {
-  const body: Record<string, unknown> = {};
+export async function queryDatabase(
+  databaseId: string,
+  filter?: unknown,
+  sorts?: unknown
+): Promise<{ results: NotionPage[]; has_more: boolean; next_cursor: string | null }> {
+  const body: Record<string, unknown> = { page_size: 50 };
   if (filter) body.filter = filter;
   if (sorts) body.sorts = sorts;
-  body.page_size = 50;
 
   return notionRequest(`/v1/databases/${databaseId}/query`, { body }) as Promise<{ results: NotionPage[]; has_more: boolean; next_cursor: string | null }>;
 }
@@ -97,20 +72,13 @@ export async function getBlocks(blockId: string): Promise<{ results: NotionBlock
   return notionRequest(`/v1/blocks/${blockId}/children?page_size=100`, { method: 'GET' }) as Promise<{ results: NotionBlock[]; has_more: boolean; next_cursor: string | null }>;
 }
 
-export async function searchPages(query: string, databaseId?: string): Promise<SearchResult> {
-  const body: Record<string, unknown> = {
+export async function searchPages(query: string): Promise<{ results: NotionPage[]; has_more: boolean; next_cursor: string | null }> {
+  const body = {
     query,
-    filter: { property: 'object', value: 'page' },
+    filter: { property: 'object', value: 'page' as const },
     page_size: 20,
   };
-  if (databaseId) {
-    body.filter = { value: 'page', property: 'object' };
-    body.filter = {
-      property: 'object',
-      value: 'page',
-    };
-  }
-  return notionRequest('/v1/search', { body }) as Promise<SearchResult>;
+  return notionRequest('/v1/search', { body }) as Promise<{ results: NotionPage[]; has_more: boolean; next_cursor: string | null }>;
 }
 
 export async function updatePageProperties(pageId: string, properties: Record<string, unknown>): Promise<NotionPage> {
@@ -133,10 +101,12 @@ export async function deleteBlock(blockId: string): Promise<void> {
 
 // Helper to extract title from a page
 export function getPageTitle(page: NotionPage): string {
+  if (!page.properties) return 'Untitled';
+
   for (const key of Object.keys(page.properties)) {
     const prop = page.properties[key];
-    if (prop.type === 'title' && prop.title) {
-      return prop.title.map(t => t.plain_text).join('') || 'Untitled';
+    if (prop.type === 'title' && 'title' in prop && Array.isArray(prop.title)) {
+      return prop.title.map((t: { plain_text: string }) => t.plain_text).join('') || 'Untitled';
     }
   }
   return 'Untitled';
@@ -144,10 +114,12 @@ export function getPageTitle(page: NotionPage): string {
 
 // Helper to get page content as plain text
 export function getPageExcerpt(page: NotionPage): string {
+  if (!page.properties) return '';
+
   for (const key of Object.keys(page.properties)) {
     const prop = page.properties[key];
-    if (prop.type === 'rich_text' && prop.rich_text) {
-      return prop.rich_text.map(t => t.plain_text).join('');
+    if (prop.type === 'rich_text' && 'rich_text' in prop && Array.isArray(prop.rich_text)) {
+      return prop.rich_text.map((t: { plain_text: string }) => t.plain_text).join('');
     }
   }
   return '';

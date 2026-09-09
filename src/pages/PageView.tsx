@@ -91,7 +91,7 @@ export default function PageView() {
       {page.cover && (
         <div className="mb-6 rounded-xl overflow-hidden">
           <img
-            src={page.cover.external?.url || page.cover.file?.url || ''}
+            src={page.cover.type === 'external' ? page.cover.external.url : page.cover.type === 'file' ? page.cover.file.url : ''}
             alt="Cover"
             className="w-full h-48 object-cover"
           />
@@ -101,8 +101,8 @@ export default function PageView() {
       {/* Title */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
-          {page.icon && 'emoji' in (page.icon || {}) && (
-            <span className="text-4xl">{(page.icon as { emoji: string }).emoji}</span>
+          {page.icon && page.icon.type === 'emoji' && (
+            <span className="text-4xl">{page.icon.emoji}</span>
           )}
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{title}</h1>
         </div>

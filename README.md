@@ -83,7 +83,10 @@ Or connect your Git repository to Cloudflare Pages for automatic deployments.
 
 ## Notion API Version
 
-Uses Notion API version `2022-06-28` (latest stable).
+Uses Notion API version `2026-03-11` (latest). This version includes:
+- `position` object instead of `after` parameter for block operations
+- `in_trash` field instead of `archived` field
+- `meeting_notes` block type instead of `transcription`
 
 ## Local Development
 
@@ -95,6 +98,14 @@ Note: For local development, you'll need to either:
 - Set up a local proxy to forward `/api/notion/*` to Notion API
 - Or use a browser extension to disable CORS (for testing only)
 
+## Type Checking
+
+```bash
+npm run typecheck
+```
+
+This runs TypeScript type checking on both the frontend (`src/`) and the Cloudflare Pages Functions (`functions/`).
+
 ## Tech Stack
 
 - React 18
@@ -102,4 +113,5 @@ Note: For local development, you'll need to either:
 - Tailwind CSS 4
 - React Router 6
 - react-markdown + remark-gfm
+- @notionhq/client (Official Notion SDK v5.12.0+)
 - Cloudflare Pages Functions (API proxy)

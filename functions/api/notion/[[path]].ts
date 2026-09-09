@@ -1,8 +1,8 @@
 // Cloudflare Pages Function - Notion API Proxy
-// This proxies requests from the frontend to the Notion API,
-// handling CORS and authentication.
+// Directly proxies requests to Notion API (no SDK to avoid type issues)
 
 const NOTION_API_BASE = 'https://api.notion.com';
+const NOTION_VERSION = '2026-03-11';
 
 interface Env {
   // Environment variables can be set in Cloudflare Pages dashboard
@@ -18,7 +18,6 @@ export const onRequest: PagesFunction<Env> = async (context) => {
 
   // Get the token from the custom header
   const token = request.headers.get('x-notion-token');
-  const notionVersion = request.headers.get('x-notion-version') || '2022-06-28';
 
   if (!token) {
     return new Response(JSON.stringify({ error: 'Missing x-notion-token header' }), {
@@ -33,7 +32,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
   // Prepare headers for Notion API
   const headers: Record<string, string> = {
     'Authorization': `Bearer ${token}`,
-    'Notion-Version': notionVersion,
+    'Notion-Version': NOTION_VERSION,
     'Content-Type': 'application/json',
   };
 

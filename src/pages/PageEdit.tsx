@@ -68,7 +68,7 @@ export default function PageEdit() {
       // First get existing blocks
       const existingBlocks = await getBlocks(id);
 
-      // Delete existing blocks (non-archived)
+      // Delete existing blocks (not in trash)
       for (const block of existingBlocks.results) {
         try {
           await deleteBlock(block.id);

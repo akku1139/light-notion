@@ -33,13 +33,16 @@ export function blocksToMarkdown(blocks: NotionBlock[]): string {
   const lines: string[] = [];
 
   for (const block of blocks) {
-    const data = block[block.type] as Record<string, unknown> | undefined;
+    if (!('type' in block)) continue;
+    
+    const blockType = block.type;
+    const data = (block as Record<string, unknown>)[blockType] as Record<string, unknown> | undefined;
     if (!data) continue;
 
     const richText = (data.rich_text || []) as RichTextItem[];
     const text = richTextToMarkdown(richText);
 
-    switch (block.type) {
+    switch (blockType) {
       case 'paragraph':
         lines.push(text);
         lines.push('');

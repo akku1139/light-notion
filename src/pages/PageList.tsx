@@ -54,7 +54,7 @@ export default function PageList() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
-            <span>{database?.icon && 'emoji' in (database.icon || {}) ? (database.icon as { emoji: string }).emoji : '📄'}</span>
+            <span>{database?.icon && database.icon.type === 'emoji' ? database.icon.emoji : '📄'}</span>
             {database?.title?.map(t => t.plain_text).join('') || 'Pages'}
           </h1>
           {database && (
@@ -94,8 +94,8 @@ export default function PageList() {
               >
                 <div className="flex items-start gap-3">
                   <div className="flex-shrink-0 mt-0.5">
-                    {page.icon && 'emoji' in (page.icon || {}) ? (
-                      <span className="text-2xl">{(page.icon as { emoji: string }).emoji}</span>
+                    {page.icon && page.icon.type === 'emoji' ? (
+                      <span className="text-2xl">{page.icon.emoji}</span>
                     ) : (
                       <FileText size={24} className="text-gray-400" />
                     )}
