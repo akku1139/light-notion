@@ -4,12 +4,14 @@ A lightweight Notion client built with React + Vite + Tailwind CSS, deployable o
 
 ## Features
 
-- 📄 **Browse Pages** - View pages from a Notion database
+- 📄 **Browse Pages** - View pages from a Notion database or entire workspace
 - 👁️ **View Pages** - Render pages with Markdown (Notion blocks → Markdown conversion)
 - ✏️ **Edit Pages** - Edit pages using Markdown (Markdown → Notion blocks conversion)
 - 🔍 **Search** - Full-text search across your Notion workspace
+- 🔢 **Math Equations** - Render LaTeX math equations with KaTeX (inline `$...$` and block `$$...$$`)
 - 🔒 **Auth** - Local token storage (no server-side auth needed)
 - 🔄 **API Proxy** - Cloudflare Pages Functions handles CORS & proxies to Notion API
+- 🌐 **Workspace Mode** - Browse all pages without specifying a database ID
 
 ## Setup
 
@@ -26,7 +28,9 @@ A lightweight Notion client built with React + Vite + Tailwind CSS, deployable o
 2. Click `•••` (top right) → "Connections" → "Add connections"
 3. Select your integration
 
-### 3. Get the Database ID
+### 3. Get the Database ID (Optional)
+
+**Option A: Browse a specific database**
 
 From the database URL:
 ```
@@ -34,6 +38,10 @@ https://www.notion.so/yourworkspace/DATABASE_ID?v=...
 ```
 
 The DATABASE_ID is the 32-character hex string (with hyphens).
+
+**Option B: Browse entire workspace**
+
+Leave the Database ID empty. The app will use the search API to show all pages accessible to your integration.
 
 ### 4. Deploy to Cloudflare Pages
 
@@ -57,7 +65,8 @@ Or connect your Git repository to Cloudflare Pages for automatic deployments.
 1. Open the deployed site
 2. Go to Settings
 3. Enter your Notion Integration Token
-4. Enter your Database ID (optional, for browsing pages)
+4. (Optional) Enter your Database ID to browse a specific database
+   - Leave empty to browse your entire workspace
 5. Save
 
 ## Architecture

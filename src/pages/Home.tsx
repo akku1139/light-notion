@@ -33,11 +33,17 @@ export default function HomePage() {
             )}
           </div>
           <div className="flex items-center gap-3">
-            <div className={`w-3 h-3 rounded-full ${hasDb ? 'bg-green-500' : 'bg-yellow-500'}`} />
+            <div className={`w-3 h-3 rounded-full ${hasDb ? 'bg-green-500' : 'bg-blue-500'}`} />
             <span className="text-sm">
-              Database: {hasDb ? 'Set ✓' : 'Not set (optional)'}
+              Database: {hasDb ? 'Set (Database mode)' : 'Not set (Workspace mode)'}
             </span>
           </div>
+        </div>
+        <div className="mt-4 text-xs text-gray-500 dark:text-gray-400">
+          {hasDb 
+            ? 'Browsing a specific database. Remove Database ID in Settings to browse entire workspace.'
+            : 'Browsing entire workspace. Set a Database ID in Settings to browse a specific database.'
+          }
         </div>
       </div>
 
@@ -78,8 +84,8 @@ export default function HomePage() {
       <div className="mt-12 bg-gray-100 dark:bg-gray-800/50 rounded-xl p-6">
         <h3 className="font-semibold mb-3 text-sm text-gray-700 dark:text-gray-300">Features</h3>
         <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-2">
-          <li className="flex items-center gap-2">✓ Browse pages from a Notion database</li>
-          <li className="flex items-center gap-2">✓ View pages with Markdown rendering</li>
+          <li className="flex items-center gap-2">✓ Browse pages from a database or entire workspace</li>
+          <li className="flex items-center gap-2">✓ View pages with Markdown rendering (including math equations)</li>
           <li className="flex items-center gap-2">✓ Edit pages (Markdown ↔ Notion blocks)</li>
           <li className="flex items-center gap-2">✓ Full-text search across workspace</li>
           <li className="flex items-center gap-2">✓ API proxy via Cloudflare Pages Functions</li>

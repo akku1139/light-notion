@@ -51,11 +51,13 @@ async function notionRequest(endpoint: string, options: NotionRequestOptions = {
 export async function queryDatabase(
   databaseId: string,
   filter?: unknown,
-  sorts?: unknown
+  sorts?: unknown,
+  startCursor?: string | null
 ): Promise<{ results: NotionPage[]; has_more: boolean; next_cursor: string | null }> {
   const body: Record<string, unknown> = { page_size: 50 };
   if (filter) body.filter = filter;
   if (sorts) body.sorts = sorts;
+  if (startCursor) body.start_cursor = startCursor;
 
   return notionRequest(`/v1/databases/${databaseId}/query`, { body }) as Promise<{ results: NotionPage[]; has_more: boolean; next_cursor: string | null }>;
 }
@@ -72,12 +74,15 @@ export async function getBlocks(blockId: string): Promise<{ results: NotionBlock
   return notionRequest(`/v1/blocks/${blockId}/children?page_size=100`, { method: 'GET' }) as Promise<{ results: NotionBlock[]; has_more: boolean; next_cursor: string | null }>;
 }
 
-export async function searchPages(query: string): Promise<{ results: NotionPage[]; has_more: boolean; next_cursor: string | null }> {
-  const body = {
+export async function searchPages(query: string, startCursor?: string | null): Promise<{ results: NotionPage[]; has_more: boolean; next_cursor: string | null }> {
+  const body: Record<string, unknown> = {
     query,
     filter: { property: 'object', value: 'page' as const },
-    page_size: 20,
+    page_size: 50,
   };
+  if (startCursor) {
+    body.start_cursor = startCursor;
+  }
   return notionRequest('/v1/search', { body }) as Promise<{ results: NotionPage[]; has_more: boolean; next_cursor: string | null }>;
 }
 

@@ -2,6 +2,10 @@ import type { NotionBlock } from './notion';
 
 interface RichTextItem {
   plain_text: string;
+  type?: string;
+  equation?: {
+    expression: string;
+  };
   annotations?: {
     bold?: boolean;
     italic?: boolean;
@@ -15,6 +19,11 @@ interface RichTextItem {
 
 function richTextToMarkdown(items: RichTextItem[]): string {
   return items.map(item => {
+    // Handle inline equations
+    if (item.type === 'equation' && item.equation) {
+      return `$${item.equation.expression}$`;
+    }
+
     let text = item.plain_text;
     if (!text) return '';
 
@@ -137,6 +146,7 @@ export function blocksToMarkdown(blocks: NotionBlock[]): string {
       }
 
       case 'equation':
+        // Block-level equation
         lines.push(`$$${text}$$`);
         lines.push('');
         break;

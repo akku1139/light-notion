@@ -1,5 +1,7 @@
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
 
 interface MarkdownRendererProps {
   content: string;
@@ -20,8 +22,12 @@ export default function MarkdownRenderer({ content }: MarkdownRendererProps) {
       prose-img:rounded-lg prose-img:shadow-md
       prose-li:leading-7
       prose-table:border-collapse
-      [&_table]:w-full [&_table]:border [&_th]:border [&_th]:px-3 [&_th]:py-2 [&_th]:bg-gray-100 dark:[&_th]:bg-gray-800 [&_td]:border [&_td]:px-3 [&_td]:py-2">
-      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+      [&_table]:w-full [&_table]:border [&_th]:border [&_th]:px-3 [&_th]:py-2 [&_th]:bg-gray-100 dark:[&_th]:bg-gray-800 [&_td]:border [&_td]:px-3 [&_td]:py-2
+      [&_.katex-display]:my-4 [&_.katex-display]:overflow-x-auto [&_.katex-display]:overflow-y-hidden">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm, remarkMath]}
+        rehypePlugins={[rehypeKatex]}
+      >
         {content}
       </ReactMarkdown>
     </div>
