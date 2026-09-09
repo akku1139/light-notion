@@ -211,19 +211,6 @@ export default function MarkdownRenderer({ content }: MarkdownRendererProps) {
             const id = generateHeadingId(text);
             return <h3 id={id} {...props}>{children}</h3>;
           },
-          a({ href, children, ...props }) {
-            // Check if the href is a valid URL
-            // If it's just a number or invalid, render as plain text
-            if (!href || !href.match(/^(https?:\/\/|mailto:|tel:|#|\/)/)) {
-              // Not a valid URL, render as plain text
-              return <span {...props}>{children}</span>;
-            }
-            return (
-              <a href={href} {...props}>
-                {children}
-              </a>
-            );
-          },
         }}
       >
         {content}

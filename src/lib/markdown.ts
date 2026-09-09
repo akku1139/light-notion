@@ -40,6 +40,49 @@ function richTextToMarkdown(items: RichTextItem[]): string {
 
 import { getBlocks } from './notion';
 
+// Resolve reference-style links like:
+// [1]: link title: https://link.org/
+// into inline links: [1](https://link.org/)
+export function resolveReferenceLinks(text: string): string {
+  const refLinks: Record<string, string> = {};
+  
+  // Match reference definitions: [ref]: url or [ref]: title: url
+  const refDefRegex = /^\[([^\]]+)\]:\s+(.+)$/gm;
+  let match;
+  
+  // First pass: collect all reference definitions
+  const textCopy = text;
+  while ((match = refDefRegex.exec(textCopy)) !== null) {
+    const ref = match[1];
+    let url = match[2].trim();
+    
+    // Handle "title: url" format (e.g., "link title: https://link.org/")
+    const titleMatch = url.match(/^(.+?):\s+(https?:\/\/\S+)$/);
+    if (titleMatch) {
+      url = titleMatch[2];
+    }
+    
+    // Only accept valid URLs
+    if (url.match(/^https?:\/\//)) {
+      refLinks[ref] = url;
+    }
+  }
+  
+  // Second pass: remove reference definitions
+  let result = text.replace(refDefRegex, '').trim();
+  
+  // Third pass: replace references with inline links
+  for (const [ref, url] of Object.entries(refLinks)) {
+    // Escape special regex characters in ref
+    const escapedRef = ref.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    // Match [ref] but not [ref](url) - negative lookahead for (
+    const refRegex = new RegExp(`\\[${escapedRef}\\](?!\\()`, 'g');
+    result = result.replace(refRegex, `[${ref}](${url})`);
+  }
+  
+  return result;
+}
+
 export async function blocksToMarkdown(blocks: NotionBlock[]): Promise<string> {
   const lines: string[] = [];
 
@@ -202,40 +245,7 @@ export async function blocksToMarkdown(blocks: NotionBlock[]): Promise<string> {
   let result = lines.join('\n');
 
   // Resolve reference-style links
-  // Match reference definitions anywhere in the text
-  const refLinkRegex = /\[([^\]]+)\]:\s+(.+)/g;
-  const refLinks: Record<string, string> = {};
-  let match;
-
-  while ((match = refLinkRegex.exec(result)) !== null) {
-    const ref = match[1];
-    let url = match[2].trim();
-    
-    // Handle "title: url" format (e.g., "link title: https://link.org/")
-    const titleMatch = url.match(/^(.+?):\s+(https?:\/\/.+)$/);
-    if (titleMatch) {
-      url = titleMatch[2];
-    } else {
-      // If no title, just use the URL as-is
-      // But make sure it's a valid URL
-      if (!url.match(/^https?:\/\//)) {
-        // Not a valid URL, skip this reference
-        continue;
-      }
-    }
-    
-    refLinks[ref] = url;
-  }
-
-  // Remove reference definitions
-  result = result.replace(refLinkRegex, '');
-
-  // Replace references with inline links
-  for (const [ref, url] of Object.entries(refLinks)) {
-    // Use word boundaries to avoid partial matches
-    const refRegex = new RegExp(`\\[${ref}\\](?!\\()`, 'g');
-    result = result.replace(refRegex, `[${ref}](${url})`);
-  }
+  result = resolveReferenceLinks(result);
 
   return result;
 }
