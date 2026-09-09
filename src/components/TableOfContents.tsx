@@ -18,18 +18,27 @@ export default function TableOfContents({ content }: TableOfContentsProps) {
     // Extract headings from markdown content
     const headingRegex = /^(#{1,3})\s+(.+)$/gm;
     const items: TocItem[] = [];
+    const idCounts: Record<string, number> = {};
     let match;
 
     while ((match = headingRegex.exec(content)) !== null) {
       const level = match[1].length;
       const text = match[2].trim();
       // Create ID from text (simple slugify)
-      const id = text
+      let id = text
         .toLowerCase()
         .replace(/[^\w\s-]/g, '')
         .replace(/\s+/g, '-')
         .replace(/-+/g, '-')
         .trim();
+      
+      // Handle duplicate IDs by adding a counter
+      if (idCounts[id] !== undefined) {
+        idCounts[id]++;
+        id = `${id}-${idCounts[id]}`;
+      } else {
+        idCounts[id] = 0;
+      }
       
       items.push({ id, text, level });
     }

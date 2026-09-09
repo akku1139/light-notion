@@ -118,11 +118,36 @@ function CodeBlock({ className, children, ...props }: {
 
 export default function MarkdownRenderer({ content }: MarkdownRendererProps) {
   const [isReady, setIsReady] = useState(false);
+  const headingIdCounts = useRef<Record<string, number>>({});
 
   useEffect(() => {
     // Pre-load highlighter
     getHighlighter().then(() => setIsReady(true));
   }, []);
+
+  // Reset heading counter when content changes
+  useEffect(() => {
+    headingIdCounts.current = {};
+  }, [content]);
+
+  const generateHeadingId = (text: string): string => {
+    let id = text
+      .toLowerCase()
+      .replace(/[^\w\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .trim();
+    
+    // Handle duplicate IDs by adding a counter
+    if (headingIdCounts.current[id] !== undefined) {
+      headingIdCounts.current[id]++;
+      id = `${id}-${headingIdCounts.current[id]}`;
+    } else {
+      headingIdCounts.current[id] = 0;
+    }
+    
+    return id;
+  };
 
   return (
     <div className="prose prose-gray dark:prose-invert max-w-none
@@ -173,32 +198,17 @@ export default function MarkdownRenderer({ content }: MarkdownRendererProps) {
           },
           h1({ children, ...props }) {
             const text = String(children);
-            const id = text
-              .toLowerCase()
-              .replace(/[^\w\s-]/g, '')
-              .replace(/\s+/g, '-')
-              .replace(/-+/g, '-')
-              .trim();
+            const id = generateHeadingId(text);
             return <h1 id={id} {...props}>{children}</h1>;
           },
           h2({ children, ...props }) {
             const text = String(children);
-            const id = text
-              .toLowerCase()
-              .replace(/[^\w\s-]/g, '')
-              .replace(/\s+/g, '-')
-              .replace(/-+/g, '-')
-              .trim();
+            const id = generateHeadingId(text);
             return <h2 id={id} {...props}>{children}</h2>;
           },
           h3({ children, ...props }) {
             const text = String(children);
-            const id = text
-              .toLowerCase()
-              .replace(/[^\w\s-]/g, '')
-              .replace(/\s+/g, '-')
-              .replace(/-+/g, '-')
-              .trim();
+            const id = generateHeadingId(text);
             return <h3 id={id} {...props}>{children}</h3>;
           },
         }}

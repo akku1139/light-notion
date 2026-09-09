@@ -78,7 +78,10 @@ export default function PageView() {
           }
         }
       },
-      { threshold: 0.1 }
+      { 
+        threshold: 0.1,
+        rootMargin: '0px 0px 1000px 0px' // Start loading 1000px before reaching the bottom
+      }
     );
 
     if (observerRef.current) {
