@@ -65,6 +65,25 @@ export default function TableOfContents({ content, onLoadMore, hasMore }: TableO
             // Sort by position (top to bottom)
             visibleEntries.sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
             setActiveId(visibleEntries[0].target.id);
+          } else {
+            // If no visible heading, find the closest heading above the viewport
+            const allHeadings = Array.from(document.querySelectorAll('h1[id], h2[id], h3[id]'));
+            const scrollTop = window.scrollY || document.documentElement.scrollTop;
+            let closestHeading: Element | null = null;
+            let closestDistance = Infinity;
+
+            for (const heading of allHeadings) {
+              const rect = heading.getBoundingClientRect();
+              const distance = Math.abs(rect.top - 80); // 80px offset for sticky header
+              if (rect.top <= 80 && distance < closestDistance) {
+                closestDistance = distance;
+                closestHeading = heading;
+              }
+            }
+
+            if (closestHeading && closestHeading.id) {
+              setActiveId(closestHeading.id);
+            }
           }
         },
         { 
@@ -76,6 +95,11 @@ export default function TableOfContents({ content, onLoadMore, hasMore }: TableO
       // Observe all heading elements
       const headingElements = document.querySelectorAll('h1[id], h2[id], h3[id]');
       headingElements.forEach((el) => observer.observe(el));
+
+      // Set initial active heading
+      if (headingElements.length > 0) {
+        setActiveId(headingElements[0].id);
+      }
 
       // Cleanup function
       return () => observer.disconnect();

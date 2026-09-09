@@ -193,7 +193,7 @@ export default function MarkdownRenderer({ content }: MarkdownRendererProps) {
             }
             return <pre {...props}>{children}</pre>;
           },
-          code({ className, children, ...props }) {
+          code({ className, children, node, ...props }) {
             // Inline code (not inside pre)
             const isBlock = className?.includes('language-');
             if (isBlock) {
