@@ -49,24 +49,35 @@ export default function TableOfContents({ content, onLoadMore, hasMore }: TableO
   }, [content]);
 
   useEffect(() => {
-    // Track active heading using IntersectionObserver
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            setActiveId(entry.target.id);
+    // Wait for DOM to be updated
+    const timer = setTimeout(() => {
+      // Track active heading using IntersectionObserver
+      const observer = new IntersectionObserver(
+        (entries) => {
+          // Find the topmost visible heading
+          const visibleEntries = entries.filter(entry => entry.isIntersecting);
+          if (visibleEntries.length > 0) {
+            // Sort by position (top to bottom)
+            visibleEntries.sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+            setActiveId(visibleEntries[0].target.id);
           }
-        });
-      },
-      { rootMargin: '-100px 0px -66% 0px', threshold: 0 }
-    );
+        },
+        { 
+          rootMargin: '-80px 0px -70% 0px', 
+          threshold: 0 
+        }
+      );
 
-    // Observe all heading elements
-    const headingElements = document.querySelectorAll('h1[id], h2[id], h3[id]');
-    headingElements.forEach((el) => observer.observe(el));
+      // Observe all heading elements
+      const headingElements = document.querySelectorAll('h1[id], h2[id], h3[id]');
+      headingElements.forEach((el) => observer.observe(el));
 
-    return () => observer.disconnect();
-  }, [headings]);
+      // Cleanup function
+      return () => observer.disconnect();
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [headings, content]);
 
   const handleClick = async (e: React.MouseEvent, id: string) => {
     e.preventDefault();
