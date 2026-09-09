@@ -1,2 +1,40 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
+
+/* Shiki syntax highlighting styles */
+.shiki-container {
+  position: relative;
+}
+
+.shiki-container pre {
+  margin: 0 !important;
+  padding: 1rem !important;
+  border-radius: 0.5rem !important;
+  overflow-x: auto;
+}
+
+.shiki-container code {
+  background: transparent !important;
+  padding: 0 !important;
+  font-size: 0.875rem !important;
+  line-height: 1.7 !important;
+}
+
+/* Fix for inline code in prose */
+.prose :not(pre) > code {
+  background-color: rgb(243 244 246);
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+}
+
+.dark .prose :not(pre) > code {
+  background-color: rgb(31 41 55);
+}
+
+/* Remove default prose pre styles that conflict with shiki */
+.prose pre {
+  background: transparent !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}

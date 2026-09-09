@@ -83,16 +83,18 @@ function CodeBlock({ className, children, ...props }: {
   if (lang && highlightedHtml) {
     return (
       <div
-        className="shiki-container rounded-lg overflow-hidden"
+        className="shiki-container rounded-lg overflow-hidden my-4"
         dangerouslySetInnerHTML={{ __html: highlightedHtml }}
       />
     );
   }
 
   return (
-    <code className={className} {...props}>
-      {children}
-    </code>
+    <pre className="bg-gray-900 rounded-lg p-4 overflow-x-auto my-4">
+      <code className={className} {...props}>
+        {children}
+      </code>
+    </pre>
   );
 }
 
@@ -122,8 +124,7 @@ export default function MarkdownRenderer({ content }: MarkdownRendererProps) {
       prose-code:bg-gray-100 dark:prose-code:bg-gray-800
       prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded
       prose-code:before:content-none prose-code:after:content-none
-      prose-pre:bg-gray-900 dark:prose-pre:bg-gray-950
-      prose-pre:rounded-lg prose-pre:p-0 prose-pre:overflow-hidden
+      prose-pre:bg-transparent! prose-pre:p-0! prose-pre:m-0!
       [&_.shiki-container]:my-4
       [&_.shiki-container_pre]:!bg-gray-900! [&_.shiki-container_pre]:!p-4! [&_.shiki-container_pre]:!m-0!
       [&_.shiki-container_pre]:!rounded-lg! [&_.shiki-container_pre]:!overflow-x-auto!
@@ -139,11 +140,9 @@ export default function MarkdownRenderer({ content }: MarkdownRendererProps) {
             if (child && typeof child === 'object' && 'props' in child) {
               const codeProps = child.props as { className?: string; children?: React.ReactNode };
               return (
-                <pre {...props}>
-                  <CodeBlock className={codeProps.className}>
-                    {codeProps.children}
-                  </CodeBlock>
-                </pre>
+                <CodeBlock className={codeProps.className}>
+                  {codeProps.children}
+                </CodeBlock>
               );
             }
             return <pre {...props}>{children}</pre>;
@@ -159,6 +158,36 @@ export default function MarkdownRenderer({ content }: MarkdownRendererProps) {
                 {children}
               </code>
             );
+          },
+          h1({ children, ...props }) {
+            const text = String(children);
+            const id = text
+              .toLowerCase()
+              .replace(/[^\w\s-]/g, '')
+              .replace(/\s+/g, '-')
+              .replace(/-+/g, '-')
+              .trim();
+            return <h1 id={id} {...props}>{children}</h1>;
+          },
+          h2({ children, ...props }) {
+            const text = String(children);
+            const id = text
+              .toLowerCase()
+              .replace(/[^\w\s-]/g, '')
+              .replace(/\s+/g, '-')
+              .replace(/-+/g, '-')
+              .trim();
+            return <h2 id={id} {...props}>{children}</h2>;
+          },
+          h3({ children, ...props }) {
+            const text = String(children);
+            const id = text
+              .toLowerCase()
+              .replace(/[^\w\s-]/g, '')
+              .replace(/\s+/g, '-')
+              .replace(/-+/g, '-')
+              .trim();
+            return <h3 id={id} {...props}>{children}</h3>;
           },
         }}
       >

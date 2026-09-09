@@ -4,6 +4,7 @@ import { ArrowLeft, Edit, Clock, ExternalLink, Loader2 } from 'lucide-react';
 import { getPage, getBlocks, getPageTitle, type NotionPage, type NotionBlock } from '../lib/notion';
 import { blocksToMarkdown } from '../lib/markdown';
 import MarkdownRenderer from '../components/MarkdownRenderer';
+import TableOfContents from '../components/TableOfContents';
 
 export default function PageView() {
   const { id } = useParams<{ id: string }>();
@@ -113,7 +114,7 @@ export default function PageView() {
   const title = getPageTitle(page);
 
   return (
-    <div className="max-w-3xl mx-auto">
+    <div className="max-w-7xl mx-auto">
       {/* Navigation */}
       <div className="flex items-center justify-between mb-6">
         <Link to="/pages" className="flex items-center gap-1 text-sm text-gray-500 hover:text-blue-600 transition-colors">
@@ -162,34 +163,46 @@ export default function PageView() {
         </div>
       </div>
 
-      {/* Content */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 md:p-8">
-        {markdown ? (
-          <MarkdownRenderer content={markdown} />
-        ) : (
-          <p className="text-gray-500 italic">This page has no content blocks.</p>
-        )}
-      </div>
+      {/* Two column layout */}
+      <div className="flex gap-8">
+        {/* Main content */}
+        <div className="flex-1 min-w-0">
+          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 md:p-8">
+            {markdown ? (
+              <MarkdownRenderer content={markdown} />
+            ) : (
+              <p className="text-gray-500 italic">This page has no content blocks.</p>
+            )}
+          </div>
 
-      {/* Loading indicator for infinite scroll */}
-      {loadingMore && (
-        <div className="flex items-center justify-center py-8">
-          <Loader2 size={24} className="animate-spin text-blue-600" />
-          <span className="ml-2 text-gray-500">Loading more content...</span>
+          {/* Loading indicator for infinite scroll */}
+          {loadingMore && (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 size={24} className="animate-spin text-blue-600" />
+              <span className="ml-2 text-gray-500">Loading more content...</span>
+            </div>
+          )}
+
+          {/* Intersection observer target */}
+          {hasMore && !loadingMore && (
+            <div ref={observerRef} className="h-20 flex items-center justify-center">
+              <p className="text-sm text-gray-400">Scroll to load more</p>
+            </div>
+          )}
+
+          {/* Block count info */}
+          <div className="mt-4 text-xs text-gray-400 text-center">
+            {blocks.length} blocks loaded
+            {hasMore && ' (more available)'}
+          </div>
         </div>
-      )}
 
-      {/* Intersection observer target */}
-      {hasMore && !loadingMore && (
-        <div ref={observerRef} className="h-20 flex items-center justify-center">
-          <p className="text-sm text-gray-400">Scroll to load more</p>
-        </div>
-      )}
-
-      {/* Block count info */}
-      <div className="mt-4 text-xs text-gray-400 text-center">
-        {blocks.length} blocks loaded
-        {hasMore && ' (more available)'}
+        {/* Table of Contents */}
+        <aside className="hidden xl:block w-64 flex-shrink-0">
+          <div className="sticky top-20">
+            <TableOfContents content={markdown} />
+          </div>
+        </aside>
       </div>
     </div>
   );
