@@ -1,14 +1,109 @@
+import { useEffect, useState, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
-import rehypePrettyCode from 'rehype-pretty-code';
+import { createHighlighter, type BundledLanguage, type BundledTheme } from 'shiki';
+
+type ShikiHighlighter = Awaited<ReturnType<typeof createHighlighter>>;
+
+// Singleton highlighter instance
+let highlighterPromise: Promise<ShikiHighlighter> | null = null;
+
+function getHighlighter(): Promise<ShikiHighlighter> {
+  if (!highlighterPromise) {
+    highlighterPromise = createHighlighter({
+      themes: ['github-dark', 'github-light'],
+      langs: [
+        'javascript', 'typescript', 'jsx', 'tsx',
+        'python', 'rust', 'go', 'java', 'c', 'cpp', 'csharp',
+        'css', 'scss', 'html', 'json', 'yaml', 'toml',
+        'markdown', 'bash', 'shell', 'sql', 'graphql',
+        'ruby', 'php', 'swift', 'kotlin', 'dart',
+        'lua', 'r', 'matlab', 'docker', 'nginx',
+        'xml', 'diff', 'ini', 'makefile',
+      ],
+    }) as Promise<ShikiHighlighter>;
+  }
+  return highlighterPromise;
+}
 
 interface MarkdownRendererProps {
   content: string;
 }
 
+// Custom code block component that uses shiki
+function CodeBlock({ className, children, ...props }: {
+  className?: string;
+  children?: React.ReactNode;
+  [key: string]: unknown;
+}) {
+  const match = /language-(\w+)/.exec(className || '');
+  const lang = match ? match[1] : '';
+  const code = String(children).replace(/\n$/, '');
+
+  const [highlightedHtml, setHighlightedHtml] = useState<string | null>(null);
+  const codeRef = useRef(code);
+  const langRef = useRef(lang);
+
+  useEffect(() => {
+    // Skip re-highlighting if code and lang haven't changed
+    if (codeRef.current === code && langRef.current === lang && highlightedHtml) return;
+    codeRef.current = code;
+    langRef.current = lang;
+
+    if (!lang) {
+      setHighlightedHtml(null);
+      return;
+    }
+
+    let cancelled = false;
+    getHighlighter().then((highlighter) => {
+      if (cancelled) return;
+      try {
+        // Check if language is loaded
+        const loadedLangs = highlighter.getLoadedLanguages() as string[];
+        if (!loadedLangs.includes(lang)) {
+          setHighlightedHtml(null);
+          return;
+        }
+        const html = highlighter.codeToHtml(code, {
+          lang: lang as BundledLanguage,
+          theme: 'github-dark' as BundledTheme,
+        });
+        setHighlightedHtml(html);
+      } catch {
+        setHighlightedHtml(null);
+      }
+    });
+
+    return () => { cancelled = true; };
+  }, [code, lang, highlightedHtml]);
+
+  if (lang && highlightedHtml) {
+    return (
+      <div
+        className="shiki-container rounded-lg overflow-hidden"
+        dangerouslySetInnerHTML={{ __html: highlightedHtml }}
+      />
+    );
+  }
+
+  return (
+    <code className={className} {...props}>
+      {children}
+    </code>
+  );
+}
+
 export default function MarkdownRenderer({ content }: MarkdownRendererProps) {
+  const [isReady, setIsReady] = useState(false);
+
+  useEffect(() => {
+    // Pre-load highlighter
+    getHighlighter().then(() => setIsReady(true));
+  }, []);
+
   return (
     <div className="prose prose-gray dark:prose-invert max-w-none
       prose-headings:font-bold prose-headings:tracking-tight
@@ -27,26 +122,51 @@ export default function MarkdownRenderer({ content }: MarkdownRendererProps) {
       prose-code:bg-gray-100 dark:prose-code:bg-gray-800
       prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded
       prose-code:before:content-none prose-code:after:content-none
-      [&_pre]:bg-gray-900 dark:[&_pre]:bg-gray-950
-      [&_pre]:rounded-lg [&_pre]:p-0 [&_pre]:overflow-hidden
-      [&_pre_code]:bg-transparent [&_pre_code]:p-4 [&_pre_code]:block
-      [&_pre_code]:text-sm [&_pre_code]:leading-relaxed
-      [&_pre_code_span]:bg-transparent!">
+      prose-pre:bg-gray-900 dark:prose-pre:bg-gray-950
+      prose-pre:rounded-lg prose-pre:p-0 prose-pre:overflow-hidden
+      [&_.shiki-container]:my-4
+      [&_.shiki-container_pre]:!bg-gray-900! [&_.shiki-container_pre]:!p-4! [&_.shiki-container_pre]:!m-0!
+      [&_.shiki-container_pre]:!rounded-lg! [&_.shiki-container_pre]:!overflow-x-auto!
+      [&_.shiki-container_pre_code]:!bg-transparent! [&_.shiki-container_pre_code]:!p-0!
+      [&_.shiki-container_pre_code]:text-sm! [&_.shiki-container_pre_code]:leading-relaxed!">
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkMath]}
-        rehypePlugins={[
-          rehypeKatex,
-          [
-            rehypePrettyCode,
-            {
-              theme: 'github-dark',
-              keepBackground: false,
-            },
-          ],
-        ]}
+        rehypePlugins={[rehypeKatex]}
+        components={{
+          pre({ children, ...props }) {
+            // Extract code element from children
+            const child = Array.isArray(children) ? children[0] : children;
+            if (child && typeof child === 'object' && 'props' in child) {
+              const codeProps = child.props as { className?: string; children?: React.ReactNode };
+              return (
+                <pre {...props}>
+                  <CodeBlock className={codeProps.className}>
+                    {codeProps.children}
+                  </CodeBlock>
+                </pre>
+              );
+            }
+            return <pre {...props}>{children}</pre>;
+          },
+          code({ className, children, ...props }) {
+            // Inline code (not inside pre)
+            const isBlock = className?.includes('language-');
+            if (isBlock) {
+              return <CodeBlock className={className}>{children}</CodeBlock>;
+            }
+            return (
+              <code className={className} {...props}>
+                {children}
+              </code>
+            );
+          },
+        }}
       >
         {content}
       </ReactMarkdown>
+      {!isReady && (
+        <div className="text-xs text-gray-400 mt-2">Loading syntax highlighter...</div>
+      )}
     </div>
   );
 }
