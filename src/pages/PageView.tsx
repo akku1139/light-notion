@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Edit, Clock, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Edit, Clock, ExternalLink, Loader2 } from 'lucide-react';
 import { getPage, getBlocks, getPageTitle, type NotionPage, type NotionBlock } from '../lib/notion';
 import { blocksToMarkdown } from '../lib/markdown';
 import MarkdownRenderer from '../components/MarkdownRenderer';
@@ -11,7 +11,11 @@ export default function PageView() {
   const [blocks, setBlocks] = useState<NotionBlock[]>([]);
   const [markdown, setMarkdown] = useState('');
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const observerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -27,6 +31,8 @@ export default function PageView() {
         setPage(pageData);
         setBlocks(blocksData.results);
         setMarkdown(blocksToMarkdown(blocksData.results));
+        setHasMore(blocksData.has_more);
+        setNextCursor(blocksData.next_cursor);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load page');
       } finally {
@@ -36,6 +42,50 @@ export default function PageView() {
 
     loadPage();
   }, [id]);
+
+  // Infinite scroll with IntersectionObserver
+  useEffect(() => {
+    if (!hasMore || !nextCursor || loadingMore) return;
+
+    const observer = new IntersectionObserver(
+      async (entries) => {
+        if (entries[0].isIntersecting && hasMore && nextCursor && !loadingMore) {
+          setLoadingMore(true);
+          try {
+            const response = await fetch(`/api/notion/v1/blocks/${id}/children?start_cursor=${nextCursor}&page_size=100`, {
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json',
+                'x-notion-token': localStorage.getItem('notion_api_token') || '',
+                'x-notion-version': '2026-03-11',
+              },
+            });
+            
+            if (!response.ok) throw new Error('Failed to load more blocks');
+            
+            const data = await response.json() as { results: NotionBlock[]; has_more: boolean; next_cursor: string | null };
+            const newBlocks = data.results;
+            
+            setBlocks(prev => [...prev, ...newBlocks]);
+            setMarkdown(prev => prev + '\n' + blocksToMarkdown(newBlocks));
+            setHasMore(data.has_more);
+            setNextCursor(data.next_cursor);
+          } catch (err) {
+            console.error('Failed to load more blocks:', err);
+          } finally {
+            setLoadingMore(false);
+          }
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (observerRef.current) {
+      observer.observe(observerRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [hasMore, nextCursor, loadingMore, id]);
 
   if (loading) {
     return (
@@ -121,9 +171,25 @@ export default function PageView() {
         )}
       </div>
 
+      {/* Loading indicator for infinite scroll */}
+      {loadingMore && (
+        <div className="flex items-center justify-center py-8">
+          <Loader2 size={24} className="animate-spin text-blue-600" />
+          <span className="ml-2 text-gray-500">Loading more content...</span>
+        </div>
+      )}
+
+      {/* Intersection observer target */}
+      {hasMore && !loadingMore && (
+        <div ref={observerRef} className="h-20 flex items-center justify-center">
+          <p className="text-sm text-gray-400">Scroll to load more</p>
+        </div>
+      )}
+
       {/* Block count info */}
       <div className="mt-4 text-xs text-gray-400 text-center">
         {blocks.length} blocks loaded
+        {hasMore && ' (more available)'}
       </div>
     </div>
   );
