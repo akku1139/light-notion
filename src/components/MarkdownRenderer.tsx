@@ -66,15 +66,8 @@ function CodeBlock({ className, children, ...props }: {
   const code = extractTextContent(children).replace(/\n$/, '');
 
   const [highlightedHtml, setHighlightedHtml] = useState<string | null>(null);
-  const codeRef = useRef(code);
-  const langRef = useRef(lang);
 
   useEffect(() => {
-    // Skip re-highlighting if code and lang haven't changed
-    if (codeRef.current === code && langRef.current === lang && highlightedHtml) return;
-    codeRef.current = code;
-    langRef.current = lang;
-
     if (!lang) {
       setHighlightedHtml(null);
       return;
@@ -94,26 +87,30 @@ function CodeBlock({ className, children, ...props }: {
           lang: lang as BundledLanguage,
           theme: 'github-dark' as BundledTheme,
         });
-        setHighlightedHtml(html);
+        if (!cancelled) {
+          setHighlightedHtml(html);
+        }
       } catch {
-        setHighlightedHtml(null);
+        if (!cancelled) {
+          setHighlightedHtml(null);
+        }
       }
     });
 
     return () => { cancelled = true; };
-  }, [code, lang, highlightedHtml]);
+  }, [code, lang]);
 
   if (lang && highlightedHtml) {
     return (
       <div
-        className="shiki-container rounded-lg overflow-hidden my-4"
+        className="shiki-container rounded-lg overflow-hidden my-2"
         dangerouslySetInnerHTML={{ __html: highlightedHtml }}
       />
     );
   }
 
   return (
-    <pre className="bg-gray-900 rounded-lg p-4 overflow-x-auto my-4">
+    <pre className="bg-gray-900 rounded-lg p-3 overflow-x-auto my-2">
       <code className={className} {...props}>
         {children}
       </code>

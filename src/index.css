@@ -4,12 +4,12 @@
 /* Shiki syntax highlighting styles */
 .shiki-container {
   position: relative;
-  margin: 1rem 0;
+  margin: 0.5rem 0;
 }
 
 .shiki-container pre {
   margin: 0;
-  padding: 1rem;
+  padding: 0.75rem 1rem;
   border-radius: 0.5rem;
   overflow-x: auto;
   background-color: rgb(17 24 39) !important;
@@ -19,7 +19,7 @@
   background: transparent !important;
   padding: 0 !important;
   font-size: 0.875rem !important;
-  line-height: 1.7 !important;
+  line-height: 1.6 !important;
 }
 
 /* Fix for inline code in prose */
@@ -47,14 +47,16 @@ html.dark .prose :not(pre) > code {
 .prose pre {
   background-color: rgb(17 24 39);
   color: rgb(243 244 246);
-  padding: 1rem;
+  padding: 0.75rem 1rem;
   border-radius: 0.5rem;
   overflow-x: auto;
-  margin: 1rem 0;
+  margin: 0.5rem 0;
 }
 
 .prose pre code {
   background: transparent;
   padding: 0;
   color: inherit;
+  font-size: 0.875rem;
+  line-height: 1.6;
 }
