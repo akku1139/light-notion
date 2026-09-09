@@ -51,7 +51,7 @@ export async function blocksToMarkdown(blocks: NotionBlock[]): Promise<string> {
     if (!data) continue;
 
     const richText = (data.rich_text || []) as RichTextItem[];
-    const text = richTextToMarkdown(richText);
+    let text = richTextToMarkdown(richText);
 
     switch (blockType) {
       case 'paragraph':
@@ -199,7 +199,36 @@ export async function blocksToMarkdown(blocks: NotionBlock[]): Promise<string> {
     }
   }
 
-  return lines.join('\n');
+  let result = lines.join('\n');
+
+  // Resolve reference-style links
+  const refLinkRegex = /^\[([^\]]+)\]:\s+(.+)$/gm;
+  const refLinks: Record<string, string> = {};
+  let match;
+
+  while ((match = refLinkRegex.exec(result)) !== null) {
+    const ref = match[1];
+    let url = match[2].trim();
+    
+    // Handle "title: url" format
+    const titleMatch = url.match(/^([^:]+):\s*(.+)$/);
+    if (titleMatch) {
+      url = titleMatch[2];
+    }
+    
+    refLinks[ref] = url;
+  }
+
+  // Remove reference definitions
+  result = result.replace(refLinkRegex, '');
+
+  // Replace references with inline links
+  for (const [ref, url] of Object.entries(refLinks)) {
+    const refRegex = new RegExp(`\\[${ref}\\]`, 'g');
+    result = result.replace(refRegex, `[${ref}](${url})`);
+  }
+
+  return result;
 }
 
 export function markdownToNotionBlocks(markdown: string): unknown[] {
