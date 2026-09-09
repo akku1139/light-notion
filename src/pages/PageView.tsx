@@ -39,7 +39,8 @@ export default function PageView() {
       const newBlocks = data.results;
       
       setBlocks(prev => [...prev, ...newBlocks]);
-      setMarkdown(prev => prev + '\n' + blocksToMarkdown(newBlocks));
+      const additionalMarkdown = await blocksToMarkdown(newBlocks);
+      setMarkdown(prev => prev + '\n' + additionalMarkdown);
       setHasMore(data.has_more);
       setNextCursor(data.next_cursor);
       
@@ -65,7 +66,8 @@ export default function PageView() {
         ]);
         setPage(pageData);
         setBlocks(blocksData.results);
-        setMarkdown(blocksToMarkdown(blocksData.results));
+        const markdownText = await blocksToMarkdown(blocksData.results);
+        setMarkdown(markdownText);
         setHasMore(blocksData.has_more);
         setNextCursor(blocksData.next_cursor);
       } catch (err) {

@@ -38,7 +38,9 @@ function richTextToMarkdown(items: RichTextItem[]): string {
   }).join('');
 }
 
-export function blocksToMarkdown(blocks: NotionBlock[]): string {
+import { getBlocks } from './notion';
+
+export async function blocksToMarkdown(blocks: NotionBlock[]): Promise<string> {
   const lines: string[] = [];
 
   for (const block of blocks) {
@@ -141,7 +143,44 @@ export function blocksToMarkdown(blocks: NotionBlock[]): string {
 
       case 'table': {
         // Tables need children blocks (rows)
-        lines.push('<!-- table -->');
+        const blockId = (block as Record<string, unknown>).id as string;
+        if (blockId) {
+          try {
+            const childrenData = await getBlocks(blockId);
+            const rows = childrenData.results;
+            const hasHeader = (data as Record<string, unknown>).has_column_header as boolean;
+            
+            if (rows.length > 0) {
+              // Convert table rows to markdown
+              const tableRows: string[][] = [];
+              
+              for (const row of rows) {
+                if (!('type' in row) || row.type !== 'table_row') continue;
+                const rowData = (row as Record<string, unknown>).table_row as Record<string, unknown> | undefined;
+                if (!rowData) continue;
+                
+                const cells = (rowData.cells || []) as RichTextItem[][];
+                const cellTexts = cells.map(cell => richTextToMarkdown(cell).replace(/\|/g, '\\|').replace(/\n/g, ' '));
+                tableRows.push(cellTexts);
+              }
+              
+              if (tableRows.length > 0) {
+                // Header row
+                lines.push('| ' + tableRows[0].join(' | ') + ' |');
+                // Separator
+                lines.push('| ' + tableRows[0].map(() => '---').join(' | ') + ' |');
+                // Data rows
+                for (let i = 1; i < tableRows.length; i++) {
+                  lines.push('| ' + tableRows[i].join(' | ') + ' |');
+                }
+                lines.push('');
+              }
+            }
+          } catch (err) {
+            console.error('Failed to load table children:', err);
+            lines.push('<!-- table (failed to load) -->');
+          }
+        }
         break;
       }
 

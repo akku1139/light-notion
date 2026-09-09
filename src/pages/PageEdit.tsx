@@ -29,7 +29,8 @@ export default function PageEdit() {
         ]);
         setPage(pageData);
         setTitle(getPageTitle(pageData));
-        setMarkdown(blocksToMarkdown(blocksData.results));
+        const markdownText = await blocksToMarkdown(blocksData.results);
+        setMarkdown(markdownText);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load page');
       } finally {
