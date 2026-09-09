@@ -10,6 +10,8 @@ export default function PageEdit() {
   const [page, setPage] = useState<NotionPage | null>(null);
   const [title, setTitle] = useState('');
   const [markdown, setMarkdown] = useState('');
+  const [initialTitle, setInitialTitle] = useState('');
+  const [initialMarkdown, setInitialMarkdown] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -28,9 +30,12 @@ export default function PageEdit() {
           getBlocks(id),
         ]);
         setPage(pageData);
-        setTitle(getPageTitle(pageData));
+        const initialTitle = getPageTitle(pageData);
+        setTitle(initialTitle);
+        setInitialTitle(initialTitle);
         const markdownText = await blocksToMarkdown(blocksData.results);
         setMarkdown(markdownText);
+        setInitialMarkdown(markdownText);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load page');
       } finally {
@@ -44,15 +49,23 @@ export default function PageEdit() {
   const handleSave = async () => {
     if (!id || !page) return;
 
+    const titleChanged = title !== initialTitle;
+    const contentChanged = markdown !== initialMarkdown;
+
+    // Nothing to save
+    if (!titleChanged && !contentChanged) {
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
+      return;
+    }
+
     setSaving(true);
     setError(null);
     setSuccess(false);
 
     try {
       // Update title if changed
-      const currentTitle = getPageTitle(page);
-      if (title !== currentTitle) {
-        // Find the title property key
+      if (titleChanged) {
         const titleKey = Object.keys(page.properties).find(
           key => page.properties[key].type === 'title'
         );
@@ -65,31 +78,37 @@ export default function PageEdit() {
         }
       }
 
-      // For content update, we need to delete existing blocks and append new ones
-      // First get existing blocks
-      const existingBlocks = await getBlocks(id);
+      // Update content only if changed
+      if (contentChanged) {
+        // Get existing blocks
+        const existingBlocks = await getBlocks(id);
 
-      // Delete existing blocks (not in trash)
-      for (const block of existingBlocks.results) {
-        try {
-          await deleteBlock(block.id);
-        } catch {
-          // Some blocks might not be deletable, skip
+        // Delete existing blocks
+        for (const block of existingBlocks.results) {
+          try {
+            await deleteBlock(block.id);
+          } catch {
+            // Some blocks might not be deletable, skip
+          }
+        }
+
+        // Convert markdown to Notion blocks and append
+        const newBlocks = markdownToNotionBlocks(markdown);
+        if (newBlocks.length > 0) {
+          // Notion API allows max 100 blocks per request
+          const chunks = [];
+          for (let i = 0; i < newBlocks.length; i += 100) {
+            chunks.push(newBlocks.slice(i, i + 100));
+          }
+          for (const chunk of chunks) {
+            await appendBlocks(id, chunk);
+          }
         }
       }
 
-      // Convert markdown to Notion blocks and append
-      const newBlocks = markdownToNotionBlocks(markdown);
-      if (newBlocks.length > 0) {
-        // Notion API allows max 100 blocks per request
-        const chunks = [];
-        for (let i = 0; i < newBlocks.length; i += 100) {
-          chunks.push(newBlocks.slice(i, i + 100));
-        }
-        for (const chunk of chunks) {
-          await appendBlocks(id, chunk);
-        }
-      }
+      // Update initial values after successful save
+      setInitialTitle(title);
+      setInitialMarkdown(markdown);
 
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
