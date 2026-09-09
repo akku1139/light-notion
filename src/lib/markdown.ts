@@ -202,7 +202,8 @@ export async function blocksToMarkdown(blocks: NotionBlock[]): Promise<string> {
   let result = lines.join('\n');
 
   // Resolve reference-style links
-  const refLinkRegex = /^\[([^\]]+)\]:\s+(.+)$/gm;
+  // Match reference definitions anywhere in the text
+  const refLinkRegex = /\[([^\]]+)\]:\s+(.+)/g;
   const refLinks: Record<string, string> = {};
   let match;
 
@@ -210,10 +211,17 @@ export async function blocksToMarkdown(blocks: NotionBlock[]): Promise<string> {
     const ref = match[1];
     let url = match[2].trim();
     
-    // Handle "title: url" format
-    const titleMatch = url.match(/^([^:]+):\s*(.+)$/);
+    // Handle "title: url" format (e.g., "link title: https://link.org/")
+    const titleMatch = url.match(/^(.+?):\s+(https?:\/\/.+)$/);
     if (titleMatch) {
       url = titleMatch[2];
+    } else {
+      // If no title, just use the URL as-is
+      // But make sure it's a valid URL
+      if (!url.match(/^https?:\/\//)) {
+        // Not a valid URL, skip this reference
+        continue;
+      }
     }
     
     refLinks[ref] = url;
@@ -224,7 +232,8 @@ export async function blocksToMarkdown(blocks: NotionBlock[]): Promise<string> {
 
   // Replace references with inline links
   for (const [ref, url] of Object.entries(refLinks)) {
-    const refRegex = new RegExp(`\\[${ref}\\]`, 'g');
+    // Use word boundaries to avoid partial matches
+    const refRegex = new RegExp(`\\[${ref}\\](?!\\()`, 'g');
     result = result.replace(refRegex, `[${ref}](${url})`);
   }
 
