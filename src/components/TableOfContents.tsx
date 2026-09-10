@@ -79,14 +79,17 @@ export default function TableOfContents({ content, onLoadMore, hasMore }: TableO
       }
     };
 
-    // Set initial active heading
-    updateActiveHeading();
+    // Wait for DOM to be updated before setting initial heading
+    const rafId = requestAnimationFrame(() => {
+      updateActiveHeading();
+    });
 
     // Listen to scroll events
     window.addEventListener('scroll', updateActiveHeading);
 
     // Cleanup
     return () => {
+      cancelAnimationFrame(rafId);
       window.removeEventListener('scroll', updateActiveHeading);
     };
   }, [headings, content]);
