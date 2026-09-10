@@ -203,10 +203,10 @@ const TableOfContents = memo(function TableOfContents({ content, onLoadMore, has
             <a
               href={`#${heading.id}`}
               onClick={(e) => handleClick(e, heading.id)}
-              className={`block py-1 text-sm transition-colors ${
+              className={`block py-1 text-sm transition-colors border-l-2 pl-2 ${
                 activeId === heading.id
-                  ? 'text-blue-600 dark:text-blue-400 font-medium'
-                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                  ? 'text-blue-600 dark:text-blue-400 border-blue-600 dark:border-blue-400'
+                  : 'text-gray-600 dark:text-gray-400 border-transparent hover:text-gray-900 dark:hover:text-gray-200'
               }`}
             >
               {heading.text}
