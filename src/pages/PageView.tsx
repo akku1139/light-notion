@@ -17,14 +17,30 @@ export default function PageView() {
   const [hasMore, setHasMore] = useState(false);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const observerRef = useRef<HTMLDivElement>(null);
+  const loadingMoreRef = useRef(false);
+  const hasMoreRef = useRef(false);
+  const nextCursorRef = useRef<string | null>(null);
+
+  // Keep refs in sync with state
+  useEffect(() => {
+    loadingMoreRef.current = loadingMore;
+  }, [loadingMore]);
+
+  useEffect(() => {
+    hasMoreRef.current = hasMore;
+  }, [hasMore]);
+
+  useEffect(() => {
+    nextCursorRef.current = nextCursor;
+  }, [nextCursor]);
 
   // Load more blocks function (shared between infinite scroll and TOC navigation)
   const loadMoreBlocks = useCallback(async (): Promise<boolean> => {
-    if (!hasMore || !nextCursor || loadingMore || !id) return false;
+    if (!hasMoreRef.current || !nextCursorRef.current || loadingMoreRef.current || !id) return false;
     
     setLoadingMore(true);
     try {
-      const response = await fetch(`/api/notion/v1/blocks/${id}/children?start_cursor=${nextCursor}&page_size=100`, {
+      const response = await fetch(`/api/notion/v1/blocks/${id}/children?start_cursor=${nextCursorRef.current}&page_size=100`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -51,7 +67,7 @@ export default function PageView() {
     } finally {
       setLoadingMore(false);
     }
-  }, [hasMore, nextCursor, loadingMore, id]);
+  }, [id]);
 
   useEffect(() => {
     if (!id) return;
@@ -82,11 +98,11 @@ export default function PageView() {
 
   // Infinite scroll with IntersectionObserver
   useEffect(() => {
-    if (!hasMore || !nextCursor || loadingMore) return;
+    if (!id) return;
 
     const observer = new IntersectionObserver(
       async (entries) => {
-        if (entries[0].isIntersecting && hasMore && nextCursor && !loadingMore) {
+        if (entries[0].isIntersecting && hasMoreRef.current && nextCursorRef.current && !loadingMoreRef.current) {
           await loadMoreBlocks();
         }
       },
@@ -101,7 +117,7 @@ export default function PageView() {
     }
 
     return () => observer.disconnect();
-  }, [hasMore, nextCursor, loadingMore, id]);
+  }, [id, loadMoreBlocks]);
 
   if (loading) {
     return (

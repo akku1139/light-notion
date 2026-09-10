@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, memo, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -55,18 +55,18 @@ function extractTextContent(children: React.ReactNode): string {
   return '';
 }
 
-// Custom code block component that uses shiki
-function CodeBlock({ className, children, ...props }: {
+// Custom code block component that uses shiki - memoized to prevent unnecessary re-renders
+const CodeBlock = memo(function CodeBlock({ className, children }: {
   className?: string;
   children?: React.ReactNode;
-  [key: string]: unknown;
 }) {
   const match = /language-(\w+)/.exec(className || '');
   const lang = match ? match[1] : '';
-  const code = extractTextContent(children).replace(/\n$/, '');
+  const code = useMemo(() => extractTextContent(children).replace(/\n$/, ''), [children]);
 
   const [highlightedHtml, setHighlightedHtml] = useState<string | null>(null);
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const prevHtmlRef = useRef<string | null>(null);
 
   useEffect(() => {
     // Check if dark mode is enabled
@@ -88,7 +88,6 @@ function CodeBlock({ className, children, ...props }: {
 
   useEffect(() => {
     if (!lang) {
-      setHighlightedHtml(null);
       return;
     }
 
@@ -99,7 +98,6 @@ function CodeBlock({ className, children, ...props }: {
         // Check if language is loaded
         const loadedLangs = highlighter.getLoadedLanguages() as string[];
         if (!loadedLangs.includes(lang)) {
-          setHighlightedHtml(null);
           return;
         }
         const html = highlighter.codeToHtml(code, {
@@ -107,37 +105,40 @@ function CodeBlock({ className, children, ...props }: {
           theme: (isDarkMode ? 'github-dark' : 'github-light') as BundledTheme,
         });
         if (!cancelled) {
+          prevHtmlRef.current = html;
           setHighlightedHtml(html);
         }
       } catch {
-        if (!cancelled) {
-          setHighlightedHtml(null);
-        }
+        // Keep previous highlighted HTML on error
       }
     });
 
     return () => { cancelled = true; };
   }, [code, lang, isDarkMode]);
 
-  if (lang && highlightedHtml) {
+  // Use cached HTML if available, otherwise show plain code
+  const displayHtml = highlightedHtml || prevHtmlRef.current;
+
+  if (lang && displayHtml) {
     return (
       <div
         className="shiki-container rounded-lg overflow-hidden my-2"
-        dangerouslySetInnerHTML={{ __html: highlightedHtml }}
+        dangerouslySetInnerHTML={{ __html: displayHtml }}
       />
     );
   }
 
   return (
     <pre className="bg-gray-100 dark:bg-gray-900 rounded-lg p-3 overflow-x-auto my-2">
-      <code className={className} {...props}>
+      <code className={className}>
         {children}
       </code>
     </pre>
   );
-}
+});
 
-export default function MarkdownRenderer({ content }: MarkdownRendererProps) {
+// Memoized MarkdownRenderer to prevent unnecessary re-renders
+const MarkdownRenderer = memo(function MarkdownRenderer({ content }: MarkdownRendererProps) {
   const [isReady, setIsReady] = useState(false);
   const headingIdCounts = useRef<Record<string, number>>({});
 
@@ -195,19 +196,18 @@ export default function MarkdownRenderer({ content }: MarkdownRendererProps) {
         remarkPlugins={[remarkGfm, remarkMath]}
         rehypePlugins={[rehypeKatex]}
         components={{
-          pre({ children, ...props }) {
+          pre({ children }) {
             // Extract code element from children
             const child = Array.isArray(children) ? children[0] : children;
             if (child && typeof child === 'object' && 'props' in child) {
               const codeProps = child.props as { className?: string; children?: React.ReactNode };
-              // Pass the actual children (could be string or React element)
               return (
                 <CodeBlock className={codeProps.className}>
                   {codeProps.children}
                 </CodeBlock>
               );
             }
-            return <pre {...props}>{children}</pre>;
+            return <pre>{children}</pre>;
           },
           code({ className, children, node, ...props }) {
             // Inline code (not inside pre)
@@ -246,4 +246,6 @@ export default function MarkdownRenderer({ content }: MarkdownRendererProps) {
       )}
     </div>
   );
-}
+});
+
+export default MarkdownRenderer;

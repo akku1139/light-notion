@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, memo } from 'react';
 
 interface TocItem {
   id: string;
@@ -12,9 +12,16 @@ interface TableOfContentsProps {
   hasMore?: boolean;
 }
 
-export default function TableOfContents({ content, onLoadMore, hasMore }: TableOfContentsProps) {
+const TableOfContents = memo(function TableOfContents({ content, onLoadMore, hasMore }: TableOfContentsProps) {
   const [headings, setHeadings] = useState<TocItem[]>([]);
   const [activeId, setActiveId] = useState<string>('');
+  const tickingRef = useRef(false);
+  const headingsRef = useRef<TocItem[]>([]);
+
+  // Keep headingsRef in sync
+  useEffect(() => {
+    headingsRef.current = headings;
+  }, [headings]);
 
   useEffect(() => {
     // Extract headings from markdown content
@@ -53,24 +60,30 @@ export default function TableOfContents({ content, onLoadMore, hasMore }: TableO
     setHeadings(items);
   }, [content]);
 
-  // Scroll event listener - only add/remove once
+  // Improved scroll handler with throttling
   useEffect(() => {
     const updateActiveHeading = () => {
       const headingElements = Array.from(document.querySelectorAll('h1[id], h2[id], h3[id]'));
       if (headingElements.length === 0) return;
 
-      const scrollPosition = window.scrollY + 120; // Offset for sticky header
+      // Get current scroll position with offset for header
+      const scrollTop = window.scrollY || document.documentElement.scrollTop;
+      const headerHeight = 100; // Account for sticky header
+      const scrollPosition = scrollTop + headerHeight;
 
-      // Find the heading that is currently in view
+      // Find the last heading that is above the scroll position
       let currentHeading = headingElements[0];
       
       for (const heading of headingElements) {
         const rect = heading.getBoundingClientRect();
-        const headingTop = rect.top + window.scrollY;
+        // Calculate the absolute position of the heading
+        const headingTop = rect.top + scrollTop;
         
+        // If this heading is above or at the scroll position, it's the current one
         if (headingTop <= scrollPosition) {
           currentHeading = heading;
         } else {
+          // Once we find a heading below the scroll position, we can break
           break;
         }
       }
@@ -80,48 +93,52 @@ export default function TableOfContents({ content, onLoadMore, hasMore }: TableO
       }
     };
 
-    // Set initial active heading
-    updateActiveHeading();
+    const handleScroll = () => {
+      if (!tickingRef.current) {
+        window.requestAnimationFrame(() => {
+          updateActiveHeading();
+          tickingRef.current = false;
+        });
+        tickingRef.current = true;
+      }
+    };
+
+    // Initial update with a delay to ensure DOM is ready
+    const initialTimeout = setTimeout(() => {
+      updateActiveHeading();
+    }, 100);
 
     // Listen to scroll events
-    window.addEventListener('scroll', updateActiveHeading);
+    window.addEventListener('scroll', handleScroll, { passive: true });
 
-    // Cleanup
-    return () => {
-      window.removeEventListener('scroll', updateActiveHeading);
-    };
-  }, []); // Empty dependency - only run once
-
-  // Update active heading when headings change (after loading more content)
-  useEffect(() => {
-    if (headings.length === 0) return;
-
-    // Use requestAnimationFrame to wait for DOM to be updated
-    const rafId = requestAnimationFrame(() => {
-      const headingElements = Array.from(document.querySelectorAll('h1[id], h2[id], h3[id]'));
-      if (headingElements.length === 0) return;
-
-      const scrollPosition = window.scrollY + 120;
-      let currentHeading = headingElements[0];
-      
-      for (const heading of headingElements) {
-        const rect = heading.getBoundingClientRect();
-        const headingTop = rect.top + window.scrollY;
-        
-        if (headingTop <= scrollPosition) {
-          currentHeading = heading;
-        } else {
-          break;
-        }
-      }
-
-      if (currentHeading && currentHeading.id) {
-        setActiveId(currentHeading.id);
+    // Also update when DOM might have changed (new headings loaded)
+    const mutationObserver = new MutationObserver(() => {
+      // Debounce mutation updates
+      if (!tickingRef.current) {
+        window.requestAnimationFrame(() => {
+          updateActiveHeading();
+          tickingRef.current = false;
+        });
+        tickingRef.current = true;
       }
     });
 
-    return () => cancelAnimationFrame(rafId);
-  }, [headings]); // Only run when headings change
+    // Observe changes to the main content
+    const mainContent = document.querySelector('main');
+    if (mainContent) {
+      mutationObserver.observe(mainContent, {
+        childList: true,
+        subtree: true,
+      });
+    }
+
+    // Cleanup
+    return () => {
+      clearTimeout(initialTimeout);
+      window.removeEventListener('scroll', handleScroll);
+      mutationObserver.disconnect();
+    };
+  }, []); // Empty dependency - only run once
 
   const handleClick = async (e: React.MouseEvent, id: string) => {
     e.preventDefault();
@@ -199,4 +216,6 @@ export default function TableOfContents({ content, onLoadMore, hasMore }: TableO
       </ul>
     </nav>
   );
-}
+});
+
+export default TableOfContents;
