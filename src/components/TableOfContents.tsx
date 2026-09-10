@@ -138,9 +138,6 @@ const TableOfContents = memo(function TableOfContents({ content, onLoadMore, has
   const handleClick = async (e: React.MouseEvent, id: string) => {
     e.preventDefault();
     
-    // Enable auto-scroll for TOC
-    isProgrammaticScrollRef.current = true;
-    
     let element = document.querySelector(`[data-toc-id="${id}"]`) as HTMLElement | null;
     
     // If element doesn't exist and we have more content to load, keep loading
@@ -168,11 +165,20 @@ const TableOfContents = memo(function TableOfContents({ content, onLoadMore, has
         behavior: 'smooth',
       });
 
-      // Reset programmatic scroll flag after animation
-      clearTimeout(scrollTimeoutRef.current);
-      scrollTimeoutRef.current = setTimeout(() => {
-        isProgrammaticScrollRef.current = false;
-      }, 1000);
+      // Update highlight immediately and after scroll completes
+      setActiveId(id);
+      
+      // Also update after scroll animation completes to ensure accuracy
+      const updateAfterScroll = () => {
+        setActiveId(id);
+      };
+
+      // Use scrollend event if supported, otherwise fallback to timeout
+      if ('onscrollend' in window) {
+        window.addEventListener('scrollend', updateAfterScroll, { once: true });
+      } else {
+        setTimeout(updateAfterScroll, 500);
+      }
     }
   };
 
