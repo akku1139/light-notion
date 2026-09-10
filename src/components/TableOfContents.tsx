@@ -111,34 +111,10 @@ const TableOfContents = memo(function TableOfContents({ content, onLoadMore, has
     // Listen to scroll events
     window.addEventListener('scroll', handleScroll, { passive: true });
 
-    // Also update when DOM might have changed (new headings loaded)
-    let mutationTimeout: ReturnType<typeof setTimeout>;
-    const mutationObserver = new MutationObserver(() => {
-      // Debounce mutation updates with longer delay
-      clearTimeout(mutationTimeout);
-      mutationTimeout = setTimeout(() => {
-        // Update multiple times to ensure position is correct after layout settles
-        updateActiveHeading();
-        setTimeout(updateActiveHeading, 100);
-        setTimeout(updateActiveHeading, 300);
-      }, 50);
-    });
-
-    // Observe changes to the main content
-    const mainContent = document.querySelector('main');
-    if (mainContent) {
-      mutationObserver.observe(mainContent, {
-        childList: true,
-        subtree: true,
-      });
-    }
-
     // Cleanup
     return () => {
       clearTimeout(initialTimeout);
-      clearTimeout(mutationTimeout);
       window.removeEventListener('scroll', handleScroll);
-      mutationObserver.disconnect();
     };
   }, []); // Empty dependency - only run once
 
