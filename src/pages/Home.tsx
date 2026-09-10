@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { FileText, Search, Settings, ArrowRight, Zap, Shield, Globe } from 'lucide-react';
 import { isAuthenticated, getDatabaseId } from '../lib/auth';
@@ -5,6 +6,10 @@ import { isAuthenticated, getDatabaseId } from '../lib/auth';
 export default function HomePage() {
   const authenticated = isAuthenticated();
   const hasDb = !!getDatabaseId();
+
+  useEffect(() => {
+    document.title = 'Notion Lite Client';
+  }, []);
 
   return (
     <div className="max-w-5xl mx-auto px-4">

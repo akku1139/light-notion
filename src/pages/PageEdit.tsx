@@ -19,6 +19,13 @@ export default function PageEdit() {
   const [mode, setMode] = useState<'edit' | 'preview'>('edit');
 
   useEffect(() => {
+    if (page) {
+      const pageTitle = getPageTitle(page);
+      document.title = `Edit: ${pageTitle} - Notion Lite`;
+    }
+  }, [page]);
+
+  useEffect(() => {
     if (!id) return;
 
     const loadPage = async () => {

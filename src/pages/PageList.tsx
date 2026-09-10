@@ -16,6 +16,14 @@ export default function PageList() {
   const databaseId = getDatabaseId();
   const isDatabaseMode = !!databaseId;
 
+  useEffect(() => {
+    if (isDatabaseMode) {
+      document.title = 'Database Pages - Notion Lite';
+    } else {
+      document.title = 'All Pages - Notion Lite';
+    }
+  }, [isDatabaseMode]);
+
   const loadPages = async (cursor?: string, forceRefresh = false) => {
     setLoading(!cursor);
     setLoadingMore(!!cursor);

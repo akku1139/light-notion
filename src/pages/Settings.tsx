@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Key, Database, Check, ExternalLink } from 'lucide-react';
 import { getToken, setToken, removeToken, getDatabaseId, setDatabaseId, removeDatabaseId, isAuthenticated } from '../lib/auth';
@@ -8,6 +8,10 @@ export default function Settings() {
   const [token, setTokenState] = useState(getToken() || '');
   const [databaseId, setDatabaseIdState] = useState(getDatabaseId() || '');
   const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    document.title = 'Settings - Notion Lite';
+  }, []);
 
   const handleSave = () => {
     if (token.trim()) {

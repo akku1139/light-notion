@@ -21,6 +21,13 @@ export default function PageView() {
   const hasMoreRef = useRef(false);
   const nextCursorRef = useRef<string | null>(null);
 
+  useEffect(() => {
+    if (page) {
+      const title = getPageTitle(page);
+      document.title = `${title} - Notion Lite`;
+    }
+  }, [page]);
+
   // Keep refs in sync with state
   useEffect(() => {
     loadingMoreRef.current = loadingMore;
