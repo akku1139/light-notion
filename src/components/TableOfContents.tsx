@@ -112,15 +112,16 @@ const TableOfContents = memo(function TableOfContents({ content, onLoadMore, has
     window.addEventListener('scroll', handleScroll, { passive: true });
 
     // Also update when DOM might have changed (new headings loaded)
+    let mutationTimeout: ReturnType<typeof setTimeout>;
     const mutationObserver = new MutationObserver(() => {
-      // Debounce mutation updates
-      if (!tickingRef.current) {
-        window.requestAnimationFrame(() => {
-          updateActiveHeading();
-          tickingRef.current = false;
-        });
-        tickingRef.current = true;
-      }
+      // Debounce mutation updates with longer delay
+      clearTimeout(mutationTimeout);
+      mutationTimeout = setTimeout(() => {
+        // Update multiple times to ensure position is correct after layout settles
+        updateActiveHeading();
+        setTimeout(updateActiveHeading, 100);
+        setTimeout(updateActiveHeading, 300);
+      }, 50);
     });
 
     // Observe changes to the main content
@@ -135,6 +136,7 @@ const TableOfContents = memo(function TableOfContents({ content, onLoadMore, has
     // Cleanup
     return () => {
       clearTimeout(initialTimeout);
+      clearTimeout(mutationTimeout);
       window.removeEventListener('scroll', handleScroll);
       mutationObserver.disconnect();
     };
@@ -188,7 +190,7 @@ const TableOfContents = memo(function TableOfContents({ content, onLoadMore, has
 
   return (
     <nav 
-      className="sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto"
+      className="sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto overflow-x-hidden"
       onScroll={handleTocScroll}
     >
       <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
