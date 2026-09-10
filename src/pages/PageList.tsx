@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { FileText, Clock, RefreshCw, Database, Globe, Loader2 } from 'lucide-react';
 import { queryDatabase, searchPages, getPageTitle, getPageExcerpt, type NotionPage } from '../lib/notion';
 import { getDatabaseId } from '../lib/auth';
+import { getCachedPages, setCachedPages, clearCache } from '../lib/cache';
 
 export default function PageList() {
   const [pages, setPages] = useState<NotionPage[]>([]);
@@ -15,12 +16,22 @@ export default function PageList() {
   const databaseId = getDatabaseId();
   const isDatabaseMode = !!databaseId;
 
-  const loadPages = async (cursor?: string) => {
+  const loadPages = async (cursor?: string, forceRefresh = false) => {
     setLoading(!cursor);
     setLoadingMore(!!cursor);
     setError(null);
 
     try {
+      // Check cache for initial load (not pagination)
+      if (!cursor && !forceRefresh && isDatabaseMode) {
+        const cachedPages = getCachedPages(databaseId);
+        if (cachedPages) {
+          setPages(cachedPages);
+          setLoading(false);
+          // Continue to fetch fresh data in background
+        }
+      }
+
       if (isDatabaseMode) {
         // Database mode: query specific database
         const result = await queryDatabase(
@@ -29,15 +40,18 @@ export default function PageList() {
           [{ timestamp: 'last_edited_time', direction: 'descending' }],
           cursor
         );
+        
         if (cursor) {
           setPages(prev => [...prev, ...result.results]);
         } else {
           setPages(result.results);
+          // Cache the first page of results
+          setCachedPages(databaseId, result.results);
         }
         setHasMore(result.has_more);
         setNextCursor(result.next_cursor);
       } else {
-        // Workspace mode: search all pages
+        // Workspace mode: search all pages (no caching for workspace mode)
         const result = await searchPages('', cursor);
         if (cursor) {
           setPages(prev => [...prev, ...result.results]);
@@ -96,9 +110,13 @@ export default function PageList() {
           </p>
         </div>
         <button
-          onClick={() => loadPages()}
+          onClick={() => {
+            clearCache(isDatabaseMode ? databaseId : undefined);
+            loadPages(undefined, true);
+          }}
           disabled={loading}
           className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors disabled:opacity-50"
+          title="Force refresh (bypasses cache)"
         >
           <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
           Refresh
