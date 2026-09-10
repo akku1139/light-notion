@@ -140,40 +140,47 @@ const CodeBlock = memo(function CodeBlock({ className, children }: {
 // Memoized MarkdownRenderer to prevent unnecessary re-renders
 const MarkdownRenderer = memo(function MarkdownRenderer({ content }: MarkdownRendererProps) {
   const [isReady, setIsReady] = useState(false);
-  const headingIdCounts = useRef<Record<string, number>>({});
 
   useEffect(() => {
     // Pre-load highlighter
     getHighlighter().then(() => setIsReady(true));
   }, []);
 
-  // Reset heading counter when content changes
-  useEffect(() => {
-    headingIdCounts.current = {};
+  // Generate heading IDs from content using useMemo to ensure consistency
+  const headingIds = useMemo(() => {
+    const headingRegex = /^(#{1,3})\s+(.+)$/gm;
+    const ids: Map<string, string> = new Map();
+    const idCounts: Record<string, number> = {};
+    let match;
+
+    while ((match = headingRegex.exec(content)) !== null) {
+      const text = match[2].trim();
+      let id = text
+        .toLowerCase()
+        .replace(/[^\w\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .trim();
+      
+      if (!id) {
+        id = 'heading';
+      }
+      
+      if (idCounts[id] !== undefined) {
+        idCounts[id]++;
+        id = `${id}-${idCounts[id]}`;
+      } else {
+        idCounts[id] = 0;
+      }
+      
+      ids.set(text, id);
+    }
+
+    return ids;
   }, [content]);
 
   const generateHeadingId = (text: string): string => {
-    let id = text
-      .toLowerCase()
-      .replace(/[^\w\s-]/g, '')
-      .replace(/\s+/g, '-')
-      .replace(/-+/g, '-')
-      .trim();
-    
-    // Handle empty ID
-    if (!id) {
-      id = 'heading';
-    }
-    
-    // Handle duplicate IDs by adding a counter
-    if (headingIdCounts.current[id] !== undefined) {
-      headingIdCounts.current[id]++;
-      id = `${id}-${headingIdCounts.current[id]}`;
-    } else {
-      headingIdCounts.current[id] = 0;
-    }
-    
-    return id;
+    return headingIds.get(text) || 'heading';
   };
 
   return (
@@ -225,17 +232,17 @@ const MarkdownRenderer = memo(function MarkdownRenderer({ content }: MarkdownRen
           h1({ children, node, ...props }) {
             const text = extractTextContent(children);
             const id = generateHeadingId(text);
-            return <h1 id={id} {...props}>{children}</h1>;
+            return <h1 id={id} data-toc-id={id} {...props}>{children}</h1>;
           },
           h2({ children, node, ...props }) {
             const text = extractTextContent(children);
             const id = generateHeadingId(text);
-            return <h2 id={id} {...props}>{children}</h2>;
+            return <h2 id={id} data-toc-id={id} {...props}>{children}</h2>;
           },
           h3({ children, node, ...props }) {
             const text = extractTextContent(children);
             const id = generateHeadingId(text);
-            return <h3 id={id} {...props}>{children}</h3>;
+            return <h3 id={id} data-toc-id={id} {...props}>{children}</h3>;
           },
         }}
       >
