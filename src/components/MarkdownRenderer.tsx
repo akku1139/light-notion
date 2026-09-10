@@ -65,7 +65,13 @@ const CodeBlock = memo(function CodeBlock({ className, children }: {
   const code = useMemo(() => extractTextContent(children).replace(/\n$/, ''), [children]);
 
   const [highlightedHtml, setHighlightedHtml] = useState<string | null>(null);
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    // Initialize with current dark mode state
+    if (typeof document !== 'undefined') {
+      return document.documentElement.classList.contains('dark');
+    }
+    return false;
+  });
   const prevHtmlRef = useRef<string | null>(null);
 
   useEffect(() => {
