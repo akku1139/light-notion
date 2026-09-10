@@ -15,13 +15,50 @@ interface TableOfContentsProps {
 const TableOfContents = memo(function TableOfContents({ content, onLoadMore, hasMore }: TableOfContentsProps) {
   const [headings, setHeadings] = useState<TocItem[]>([]);
   const [activeId, setActiveId] = useState<string>('');
+  const [autoScroll, setAutoScroll] = useState(true);
   const tickingRef = useRef(false);
   const headingsRef = useRef<TocItem[]>([]);
+  const tocRef = useRef<HTMLElement>(null);
+  const userScrolledRef = useRef(false);
 
   // Keep headingsRef in sync
   useEffect(() => {
     headingsRef.current = headings;
   }, [headings]);
+
+  // Auto-scroll TOC to active heading
+  useEffect(() => {
+    if (!autoScroll || !activeId || !tocRef.current) return;
+
+    const activeElement = tocRef.current.querySelector(`[data-toc-id="${activeId}"]`);
+    if (activeElement) {
+      activeElement.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      });
+    }
+  }, [activeId, autoScroll]);
+
+  // Detect user manual scroll in TOC
+  const handleTocScroll = (e: React.UIEvent<HTMLElement>) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    
+    // Mark that user manually scrolled
+    if (!userScrolledRef.current) {
+      userScrolledRef.current = true;
+      setAutoScroll(false);
+      
+      // Reset after 3 seconds of no scrolling
+      setTimeout(() => {
+        userScrolledRef.current = false;
+      }, 3000);
+    }
+    
+    // If scrolled near the bottom of TOC (within 50px), trigger load more
+    if (scrollHeight - scrollTop - clientHeight < 50 && hasMore && onLoadMore) {
+      onLoadMore();
+    }
+  };
 
   useEffect(() => {
     // Extract headings from markdown content
@@ -121,6 +158,9 @@ const TableOfContents = memo(function TableOfContents({ content, onLoadMore, has
   const handleClick = async (e: React.MouseEvent, id: string) => {
     e.preventDefault();
     
+    // Enable auto-scroll when user clicks a TOC item
+    setAutoScroll(true);
+    
     // Try to find the element
     let element = document.getElementById(id);
     
@@ -152,30 +192,37 @@ const TableOfContents = memo(function TableOfContents({ content, onLoadMore, has
     }
   };
 
-  const handleTocScroll = (e: React.UIEvent<HTMLElement>) => {
-    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
-    // If scrolled near the bottom of TOC (within 50px), trigger load more
-    if (scrollHeight - scrollTop - clientHeight < 50 && hasMore && onLoadMore) {
-      onLoadMore();
-    }
-  };
-
   if (headings.length === 0) {
     return null;
   }
 
   return (
     <nav 
+      ref={tocRef}
       className="sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto overflow-x-hidden"
       onScroll={handleTocScroll}
     >
-      <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
-        On this page
+      <div className="flex items-center justify-between mb-3">
+        <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+          On this page
+        </div>
+        <button
+          onClick={() => setAutoScroll(!autoScroll)}
+          className={`text-xs px-2 py-1 rounded transition-colors ${
+            autoScroll
+              ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+              : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
+          }`}
+          title={autoScroll ? 'Disable auto-scroll' : 'Enable auto-scroll'}
+        >
+          {autoScroll ? 'Auto' : 'Manual'}
+        </button>
       </div>
       <ul className="space-y-1">
         {headings.map((heading) => (
           <li
             key={heading.id}
+            data-toc-id={heading.id}
             style={{ paddingLeft: `${(heading.level - 1) * 12}px` }}
           >
             <a
