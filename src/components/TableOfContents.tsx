@@ -79,6 +79,11 @@ const TableOfContents = memo(function TableOfContents({ content, onLoadMore, has
         }
       }
 
+      // If no heading is above scroll position, use the first heading
+      if (!currentId && headingElements.length > 0) {
+        currentId = headingElements[0].getAttribute('data-toc-id') || '';
+      }
+
       if (currentId) {
         setActiveId(currentId);
       }
