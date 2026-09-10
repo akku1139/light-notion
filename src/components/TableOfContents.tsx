@@ -156,16 +156,11 @@ const TableOfContents = memo(function TableOfContents({ content, onLoadMore, has
     }
     
     if (element) {
-      const offset = 100;
-      const elementPosition = element.getBoundingClientRect().top;
-      const offsetPosition = elementPosition + window.pageYOffset - offset;
+      // Use scrollIntoView for reliable long-distance scrolling
+      // scroll-padding-top in CSS handles the header offset
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
-      window.scrollTo({
-        top: offsetPosition,
-        behavior: 'smooth',
-      });
-
-      // Update highlight immediately and after scroll completes
+      // Update highlight immediately
       setActiveId(id);
       
       // Also update after scroll animation completes to ensure accuracy
@@ -202,14 +197,11 @@ const TableOfContents = memo(function TableOfContents({ content, onLoadMore, has
         </div>
         <button
           onClick={() => {
-            // Toggle: just reset to first heading
             if (headings.length > 0) {
               const firstHeading = document.querySelector(`[data-toc-id="${headings[0].id}"]`) as HTMLElement;
               if (firstHeading) {
-                const offset = 100;
-                const elementPosition = firstHeading.getBoundingClientRect().top;
-                const offsetPosition = elementPosition + window.pageYOffset - offset;
-                window.scrollTo({ top: offsetPosition, behavior: 'smooth' });
+                firstHeading.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                setActiveId(headings[0].id);
               }
             }
           }}

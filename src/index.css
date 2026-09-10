@@ -1,6 +1,11 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
+/* Offset for sticky header when scrolling to headings */
+html {
+  scroll-padding-top: 120px;
+}
+
 /* Grid pattern for hero background */
 .bg-grid-pattern {
   background-image: 
