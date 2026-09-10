@@ -156,23 +156,24 @@ const TableOfContents = memo(function TableOfContents({ content, onLoadMore, has
     }
     
     if (element) {
-      // Use scrollIntoView for reliable long-distance scrolling
-      // scroll-padding-top in CSS handles the header offset
+      // Mark as programmatic scroll to prevent handleScroll from overriding activeId
+      isProgrammaticScrollRef.current = true;
+      
       element.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
       // Update highlight immediately
       setActiveId(id);
       
-      // Also update after scroll animation completes to ensure accuracy
-      const updateAfterScroll = () => {
+      // Reset flag and ensure correct highlight after scroll completes
+      const finishScroll = () => {
+        isProgrammaticScrollRef.current = false;
         setActiveId(id);
       };
 
-      // Use scrollend event if supported, otherwise fallback to timeout
       if ('onscrollend' in window) {
-        window.addEventListener('scrollend', updateAfterScroll, { once: true });
+        window.addEventListener('scrollend', finishScroll, { once: true });
       } else {
-        setTimeout(updateAfterScroll, 500);
+        setTimeout(finishScroll, 1000);
       }
     }
   };
@@ -200,8 +201,20 @@ const TableOfContents = memo(function TableOfContents({ content, onLoadMore, has
             if (headings.length > 0) {
               const firstHeading = document.querySelector(`[data-toc-id="${headings[0].id}"]`) as HTMLElement;
               if (firstHeading) {
+                isProgrammaticScrollRef.current = true;
                 firstHeading.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 setActiveId(headings[0].id);
+                
+                const finishScroll = () => {
+                  isProgrammaticScrollRef.current = false;
+                  setActiveId(headings[0].id);
+                };
+                
+                if ('onscrollend' in window) {
+                  window.addEventListener('scrollend', finishScroll, { once: true });
+                } else {
+                  setTimeout(finishScroll, 1000);
+                }
               }
             }
           }}
