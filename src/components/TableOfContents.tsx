@@ -54,58 +54,41 @@ export default function TableOfContents({ content, onLoadMore, hasMore }: TableO
   }, [content]);
 
   useEffect(() => {
-    // Wait for DOM to be updated
-    const timer = setTimeout(() => {
-      // Track active heading using IntersectionObserver
-      const observer = new IntersectionObserver(
-        (entries) => {
-          // Find the topmost visible heading
-          const visibleEntries = entries.filter(entry => entry.isIntersecting);
-          if (visibleEntries.length > 0) {
-            // Sort by position (top to bottom)
-            visibleEntries.sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
-            setActiveId(visibleEntries[0].target.id);
-          } else {
-            // If no visible heading, find the closest heading above the viewport
-            const allHeadings = Array.from(document.querySelectorAll('h1[id], h2[id], h3[id]'));
-            const scrollTop = window.scrollY || document.documentElement.scrollTop;
-            let closestHeading: Element | null = null;
-            let closestDistance = Infinity;
+    const updateActiveHeading = () => {
+      const headingElements = Array.from(document.querySelectorAll('h1[id], h2[id], h3[id]'));
+      if (headingElements.length === 0) return;
 
-            for (const heading of allHeadings) {
-              const rect = heading.getBoundingClientRect();
-              const distance = Math.abs(rect.top - 80); // 80px offset for sticky header
-              if (rect.top <= 80 && distance < closestDistance) {
-                closestDistance = distance;
-                closestHeading = heading;
-              }
-            }
+      const scrollPosition = window.scrollY + 120; // Offset for sticky header
 
-            if (closestHeading && closestHeading.id) {
-              setActiveId(closestHeading.id);
-            }
-          }
-        },
-        { 
-          rootMargin: '-80px 0px -70% 0px', 
-          threshold: 0 
+      // Find the heading that is currently in view
+      let currentHeading = headingElements[0];
+      
+      for (const heading of headingElements) {
+        const rect = heading.getBoundingClientRect();
+        const headingTop = rect.top + window.scrollY;
+        
+        if (headingTop <= scrollPosition) {
+          currentHeading = heading;
+        } else {
+          break;
         }
-      );
-
-      // Observe all heading elements
-      const headingElements = document.querySelectorAll('h1[id], h2[id], h3[id]');
-      headingElements.forEach((el) => observer.observe(el));
-
-      // Set initial active heading
-      if (headingElements.length > 0) {
-        setActiveId(headingElements[0].id);
       }
 
-      // Cleanup function
-      return () => observer.disconnect();
-    }, 100);
+      if (currentHeading && currentHeading.id) {
+        setActiveId(currentHeading.id);
+      }
+    };
 
-    return () => clearTimeout(timer);
+    // Set initial active heading
+    updateActiveHeading();
+
+    // Listen to scroll events
+    window.addEventListener('scroll', updateActiveHeading);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener('scroll', updateActiveHeading);
+    };
   }, [headings, content]);
 
   const handleClick = async (e: React.MouseEvent, id: string) => {
