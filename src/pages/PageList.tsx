@@ -21,10 +21,12 @@ export default function PageList() {
     setLoadingMore(!!cursor);
     setError(null);
 
+    const cacheKey = isDatabaseMode ? databaseId : 'workspace';
+
     try {
       // Check cache for initial load (not pagination)
-      if (!cursor && !forceRefresh && isDatabaseMode) {
-        const cachedPages = getCachedPages(databaseId);
+      if (!cursor && !forceRefresh) {
+        const cachedPages = getCachedPages(cacheKey);
         if (cachedPages) {
           setPages(cachedPages);
           setLoading(false);
@@ -46,17 +48,19 @@ export default function PageList() {
         } else {
           setPages(result.results);
           // Cache the first page of results
-          setCachedPages(databaseId, result.results);
+          setCachedPages(cacheKey, result.results);
         }
         setHasMore(result.has_more);
         setNextCursor(result.next_cursor);
       } else {
-        // Workspace mode: search all pages (no caching for workspace mode)
+        // Workspace mode: search all pages
         const result = await searchPages('', cursor);
         if (cursor) {
           setPages(prev => [...prev, ...result.results]);
         } else {
           setPages(result.results);
+          // Cache the first page of results
+          setCachedPages(cacheKey, result.results);
         }
         setHasMore(result.has_more);
         setNextCursor(result.next_cursor);
@@ -111,7 +115,7 @@ export default function PageList() {
         </div>
         <button
           onClick={() => {
-            clearCache(isDatabaseMode ? databaseId : undefined);
+            clearCache(isDatabaseMode ? databaseId : 'workspace');
             loadPages(undefined, true);
           }}
           disabled={loading}
