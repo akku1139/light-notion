@@ -230,13 +230,11 @@ export default function PageView() {
 
         {/* Table of Contents */}
         <aside className="hidden xl:block w-64 flex-shrink-0">
-          <div className="sticky top-20">
-            <TableOfContents 
-              content={markdown} 
-              onLoadMore={loadMoreBlocks}
-              hasMore={hasMore}
-            />
-          </div>
+          <TableOfContents 
+            content={markdown} 
+            onLoadMore={loadMoreBlocks}
+            hasMore={hasMore}
+          />
         </aside>
       </div>
     </div>

@@ -19,7 +19,8 @@ const TableOfContents = memo(function TableOfContents({ content, onLoadMore, has
   const tickingRef = useRef(false);
   const headingsRef = useRef<TocItem[]>([]);
   const tocRef = useRef<HTMLElement>(null);
-  const userScrolledRef = useRef(false);
+  const isProgrammaticScrollRef = useRef(false);
+  const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
 
   // Keep headingsRef in sync
   useEffect(() => {
@@ -32,95 +33,50 @@ const TableOfContents = memo(function TableOfContents({ content, onLoadMore, has
 
     const activeElement = tocRef.current.querySelector(`[data-toc-id="${activeId}"]`);
     if (activeElement) {
+      // Mark this as a programmatic scroll so handleTocScroll ignores it
+      isProgrammaticScrollRef.current = true;
+      
       activeElement.scrollIntoView({
         behavior: 'smooth',
         block: 'center',
       });
+
+      // Reset flag after scroll animation completes
+      clearTimeout(scrollTimeoutRef.current);
+      scrollTimeoutRef.current = setTimeout(() => {
+        isProgrammaticScrollRef.current = false;
+      }, 500);
     }
   }, [activeId, autoScroll]);
 
   // Detect user manual scroll in TOC
-  const handleTocScroll = (e: React.UIEvent<HTMLElement>) => {
-    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
-    
-    // Mark that user manually scrolled
-    if (!userScrolledRef.current) {
-      userScrolledRef.current = true;
-      setAutoScroll(false);
-      
-      // Reset after 3 seconds of no scrolling
-      setTimeout(() => {
-        userScrolledRef.current = false;
-      }, 3000);
-    }
-    
-    // If scrolled near the bottom of TOC (within 50px), trigger load more
-    if (scrollHeight - scrollTop - clientHeight < 50 && hasMore && onLoadMore) {
-      onLoadMore();
-    }
+  const handleTocScroll = () => {
+    // Ignore programmatic scrolls (from scrollIntoView)
+    if (isProgrammaticScrollRef.current) return;
+
+    // User manually scrolled - disable auto-scroll
+    setAutoScroll(false);
   };
 
-  useEffect(() => {
-    // Extract headings from markdown content
-    const headingRegex = /^(#{1,3})\s+(.+)$/gm;
-    const items: TocItem[] = [];
-    const idCounts: Record<string, number> = {};
-    let match;
-
-    while ((match = headingRegex.exec(content)) !== null) {
-      const level = match[1].length;
-      const text = match[2].trim();
-      // Create ID from text (simple slugify)
-      let id = text
-        .toLowerCase()
-        .replace(/[^\w\s-]/g, '')
-        .replace(/\s+/g, '-')
-        .replace(/-+/g, '-')
-        .trim();
-      
-      // Handle empty ID
-      if (!id) {
-        id = 'heading';
-      }
-      
-      // Handle duplicate IDs by adding a counter
-      if (idCounts[id] !== undefined) {
-        idCounts[id]++;
-        id = `${id}-${idCounts[id]}`;
-      } else {
-        idCounts[id] = 0;
-      }
-      
-      items.push({ id, text, level });
-    }
-
-    setHeadings(items);
-  }, [content]);
-
-  // Improved scroll handler with throttling
+  // Scroll handler for main page
   useEffect(() => {
     const updateActiveHeading = () => {
       const headingElements = Array.from(document.querySelectorAll('h1[id], h2[id], h3[id]'));
       if (headingElements.length === 0) return;
 
-      // Get current scroll position with offset for header
       const scrollTop = window.scrollY || document.documentElement.scrollTop;
-      const headerHeight = 100; // Account for sticky header
+      const headerHeight = 100;
       const scrollPosition = scrollTop + headerHeight;
 
-      // Find the last heading that is above the scroll position
       let currentHeading = headingElements[0];
       
       for (const heading of headingElements) {
         const rect = heading.getBoundingClientRect();
-        // Calculate the absolute position of the heading
         const headingTop = rect.top + scrollTop;
         
-        // If this heading is above or at the scroll position, it's the current one
         if (headingTop <= scrollPosition) {
           currentHeading = heading;
         } else {
-          // Once we find a heading below the scroll position, we can break
           break;
         }
       }
@@ -140,20 +96,17 @@ const TableOfContents = memo(function TableOfContents({ content, onLoadMore, has
       }
     };
 
-    // Initial update with a delay to ensure DOM is ready
     const initialTimeout = setTimeout(() => {
       updateActiveHeading();
     }, 100);
 
-    // Listen to scroll events
     window.addEventListener('scroll', handleScroll, { passive: true });
 
-    // Cleanup
     return () => {
       clearTimeout(initialTimeout);
       window.removeEventListener('scroll', handleScroll);
     };
-  }, []); // Empty dependency - only run once
+  }, []);
 
   const handleClick = async (e: React.MouseEvent, id: string) => {
     e.preventDefault();
@@ -161,17 +114,14 @@ const TableOfContents = memo(function TableOfContents({ content, onLoadMore, has
     // Enable auto-scroll when user clicks a TOC item
     setAutoScroll(true);
     
-    // Try to find the element
     let element = document.getElementById(id);
     
-    // If element doesn't exist and we have more content to load, keep loading
     if (!element && hasMore && onLoadMore) {
       let attempts = 0;
-      const maxAttempts = 10; // Prevent infinite loop
+      const maxAttempts = 10;
       
       while (!element && hasMore && attempts < maxAttempts) {
         const hasMoreAfterLoad = await onLoadMore();
-        // Wait a bit for DOM to update
         await new Promise(resolve => setTimeout(resolve, 100));
         element = document.getElementById(id);
         attempts++;
@@ -181,7 +131,7 @@ const TableOfContents = memo(function TableOfContents({ content, onLoadMore, has
     }
     
     if (element) {
-      const offset = 100; // Account for sticky header
+      const offset = 100;
       const elementPosition = element.getBoundingClientRect().top;
       const offsetPosition = elementPosition + window.pageYOffset - offset;
 
@@ -192,23 +142,27 @@ const TableOfContents = memo(function TableOfContents({ content, onLoadMore, has
     }
   };
 
+  const handleTocBottomScroll = (e: React.UIEvent<HTMLElement>) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    if (scrollHeight - scrollTop - clientHeight < 50 && hasMore && onLoadMore) {
+      onLoadMore();
+    }
+  };
+
   if (headings.length === 0) {
     return null;
   }
 
   return (
-    <nav 
-      ref={tocRef}
-      className="sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto overflow-x-hidden"
-      onScroll={handleTocScroll}
-    >
-      <div className="flex items-center justify-between mb-3">
+    <div className="sticky top-20 flex flex-col max-h-[calc(100vh-6rem)]">
+      {/* Sticky header */}
+      <div className="flex items-center justify-between mb-2 pb-2 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 rounded-t-lg px-3 py-2 flex-shrink-0">
         <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
           On this page
         </div>
         <button
           onClick={() => setAutoScroll(!autoScroll)}
-          className={`text-xs px-2 py-1 rounded transition-colors ${
+          className={`text-xs px-2 py-1 rounded-md transition-colors ${
             autoScroll
               ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
               : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
@@ -218,28 +172,39 @@ const TableOfContents = memo(function TableOfContents({ content, onLoadMore, has
           {autoScroll ? 'Auto' : 'Manual'}
         </button>
       </div>
-      <ul className="space-y-1">
-        {headings.map((heading) => (
-          <li
-            key={heading.id}
-            data-toc-id={heading.id}
-            style={{ paddingLeft: `${(heading.level - 1) * 12}px` }}
-          >
-            <a
-              href={`#${heading.id}`}
-              onClick={(e) => handleClick(e, heading.id)}
-              className={`block py-1 text-sm transition-colors border-l-2 pl-2 ${
-                activeId === heading.id
-                  ? 'text-blue-600 dark:text-blue-400 border-blue-600 dark:border-blue-400'
-                  : 'text-gray-600 dark:text-gray-400 border-transparent hover:text-gray-900 dark:hover:text-gray-200'
-              }`}
+      
+      {/* Scrollable list */}
+      <nav 
+        ref={tocRef}
+        className="flex-1 overflow-y-auto overflow-x-hidden"
+        onScroll={(e) => {
+          handleTocScroll();
+          handleTocBottomScroll(e);
+        }}
+      >
+        <ul className="space-y-1 py-1">
+          {headings.map((heading) => (
+            <li
+              key={heading.id}
+              data-toc-id={heading.id}
+              style={{ paddingLeft: `${(heading.level - 1) * 12}px` }}
             >
-              {heading.text}
-            </a>
-          </li>
-        ))}
-      </ul>
-    </nav>
+              <a
+                href={`#${heading.id}`}
+                onClick={(e) => handleClick(e, heading.id)}
+                className={`block py-1 text-sm transition-colors border-l-2 pl-2 ${
+                  activeId === heading.id
+                    ? 'text-blue-600 dark:text-blue-400 border-blue-600 dark:border-blue-400'
+                    : 'text-gray-600 dark:text-gray-400 border-transparent hover:text-gray-900 dark:hover:text-gray-200'
+                }`}
+              >
+                {heading.text}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </nav>
+    </div>
   );
 });
 
