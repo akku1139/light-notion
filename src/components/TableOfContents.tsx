@@ -27,6 +27,40 @@ const TableOfContents = memo(function TableOfContents({ content, onLoadMore, has
     headingsRef.current = headings;
   }, [headings]);
 
+  // Extract headings from content
+  useEffect(() => {
+    const headingRegex = /^(#{1,3})\s+(.+)$/gm;
+    const items: TocItem[] = [];
+    const idCounts: Record<string, number> = {};
+    let match;
+
+    while ((match = headingRegex.exec(content)) !== null) {
+      const level = match[1].length;
+      const text = match[2].trim();
+      let id = text
+        .toLowerCase()
+        .replace(/[^\w\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .trim();
+      
+      if (!id) {
+        id = 'heading';
+      }
+      
+      if (idCounts[id] !== undefined) {
+        idCounts[id]++;
+        id = `${id}-${idCounts[id]}`;
+      } else {
+        idCounts[id] = 0;
+      }
+      
+      items.push({ id, text, level });
+    }
+
+    setHeadings(items);
+  }, [content]);
+
   // Auto-scroll TOC to active heading
   useEffect(() => {
     if (!autoScroll || !activeId || !tocRef.current) return;
