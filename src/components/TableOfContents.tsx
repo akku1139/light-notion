@@ -65,14 +65,28 @@ const TableOfContents = memo(function TableOfContents({ content, onLoadMore, has
   useEffect(() => {
     if (!autoScroll || !activeId || !tocRef.current) return;
 
-    const activeElement = tocRef.current.querySelector(`[data-toc-id="${activeId}"]`);
+    const tocContainer = tocRef.current;
+    const activeElement = tocContainer.querySelector(`[data-toc-id="${activeId}"]`);
+    
     if (activeElement) {
       // Mark this as a programmatic scroll so handleTocScroll ignores it
       isProgrammaticScrollRef.current = true;
       
-      activeElement.scrollIntoView({
+      // Calculate scroll position to center the active element in TOC container
+      // Using scrollTop directly instead of scrollIntoView to avoid affecting main page scroll
+      const containerRect = tocContainer.getBoundingClientRect();
+      const elementRect = activeElement.getBoundingClientRect();
+      const elementTop = elementRect.top - containerRect.top;
+      const containerHeight = tocContainer.clientHeight;
+      const elementHeight = activeElement.clientHeight;
+      
+      // Center the element in the container
+      const targetScrollTop = tocContainer.scrollTop + elementTop - (containerHeight / 2) + (elementHeight / 2);
+      
+      // Smooth scroll within TOC container only
+      tocContainer.scrollTo({
+        top: targetScrollTop,
         behavior: 'smooth',
-        block: 'center',
       });
 
       // Reset flag after scroll animation completes
