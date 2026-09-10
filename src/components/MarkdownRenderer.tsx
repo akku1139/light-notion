@@ -97,6 +97,8 @@ const CodeBlock = memo(function CodeBlock({ className, children }: {
       return;
     }
 
+    console.log('[CodeBlock] Rendering with isDarkMode:', isDarkMode, 'lang:', lang);
+
     let cancelled = false;
     getHighlighter().then((highlighter) => {
       if (cancelled) return;
@@ -106,10 +108,13 @@ const CodeBlock = memo(function CodeBlock({ className, children }: {
         if (!loadedLangs.includes(lang)) {
           return;
         }
+        const theme = isDarkMode ? 'github-dark' : 'github-light';
+        console.log('[CodeBlock] Using theme:', theme);
         const html = highlighter.codeToHtml(code, {
           lang: lang as BundledLanguage,
-          theme: (isDarkMode ? 'github-dark' : 'github-light') as BundledTheme,
+          theme: theme as BundledTheme,
         });
+        console.log('[CodeBlock] Generated HTML:', html.substring(0, 200));
         if (!cancelled) {
           prevHtmlRef.current = html;
           setHighlightedHtml(html);
