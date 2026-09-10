@@ -12,6 +12,10 @@
   padding: 0.75rem 1rem;
   border-radius: 0.5rem;
   overflow-x: auto;
+  background-color: rgb(249 250 251) !important;
+}
+
+.dark .shiki-container pre {
   background-color: rgb(17 24 39) !important;
 }
 
@@ -45,12 +49,17 @@ html.dark .prose :not(pre) > code {
 
 /* Regular code blocks (without shiki) */
 .prose pre {
-  background-color: rgb(17 24 39);
-  color: rgb(243 244 246);
+  background-color: rgb(249 250 251);
+  color: rgb(17 24 39);
   padding: 0.75rem 1rem;
   border-radius: 0.5rem;
   overflow-x: auto;
   margin: 0.5rem 0;
+}
+
+.dark .prose pre {
+  background-color: rgb(17 24 39);
+  color: rgb(243 244 246);
 }
 
 .prose pre code {

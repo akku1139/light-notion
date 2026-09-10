@@ -66,6 +66,25 @@ function CodeBlock({ className, children, ...props }: {
   const code = extractTextContent(children).replace(/\n$/, '');
 
   const [highlightedHtml, setHighlightedHtml] = useState<string | null>(null);
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
+  useEffect(() => {
+    // Check if dark mode is enabled
+    const checkDarkMode = () => {
+      setIsDarkMode(document.documentElement.classList.contains('dark'));
+    };
+    
+    checkDarkMode();
+    
+    // Listen for theme changes
+    const observer = new MutationObserver(checkDarkMode);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class'],
+    });
+    
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     if (!lang) {
@@ -85,7 +104,7 @@ function CodeBlock({ className, children, ...props }: {
         }
         const html = highlighter.codeToHtml(code, {
           lang: lang as BundledLanguage,
-          theme: 'github-dark' as BundledTheme,
+          theme: (isDarkMode ? 'github-dark' : 'github-light') as BundledTheme,
         });
         if (!cancelled) {
           setHighlightedHtml(html);
@@ -98,7 +117,7 @@ function CodeBlock({ className, children, ...props }: {
     });
 
     return () => { cancelled = true; };
-  }, [code, lang]);
+  }, [code, lang, isDarkMode]);
 
   if (lang && highlightedHtml) {
     return (
@@ -110,7 +129,7 @@ function CodeBlock({ className, children, ...props }: {
   }
 
   return (
-    <pre className="bg-gray-900 rounded-lg p-3 overflow-x-auto my-2">
+    <pre className="bg-gray-100 dark:bg-gray-900 rounded-lg p-3 overflow-x-auto my-2">
       <code className={className} {...props}>
         {children}
       </code>
