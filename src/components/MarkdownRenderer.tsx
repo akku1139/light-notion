@@ -140,47 +140,40 @@ const CodeBlock = memo(function CodeBlock({ className, children }: {
 // Memoized MarkdownRenderer to prevent unnecessary re-renders
 const MarkdownRenderer = memo(function MarkdownRenderer({ content }: MarkdownRendererProps) {
   const [isReady, setIsReady] = useState(false);
+  const headingCounters = useRef<Record<string, number>>({});
+  const lastContent = useRef<string>('');
 
   useEffect(() => {
     // Pre-load highlighter
     getHighlighter().then(() => setIsReady(true));
   }, []);
 
-  // Generate heading IDs from content using useMemo to ensure consistency
-  const headingIds = useMemo(() => {
-    const headingRegex = /^(#{1,3})\s+(.+)$/gm;
-    const ids: Map<string, string> = new Map();
-    const idCounts: Record<string, number> = {};
-    let match;
-
-    while ((match = headingRegex.exec(content)) !== null) {
-      const text = match[2].trim();
-      let id = text
-        .toLowerCase()
-        .replace(/[^\w\s-]/g, '')
-        .replace(/\s+/g, '-')
-        .replace(/-+/g, '-')
-        .trim();
-      
-      if (!id) {
-        id = 'heading';
-      }
-      
-      if (idCounts[id] !== undefined) {
-        idCounts[id]++;
-        id = `${id}-${idCounts[id]}`;
-      } else {
-        idCounts[id] = 0;
-      }
-      
-      ids.set(text, id);
-    }
-
-    return ids;
-  }, [content]);
+  // Reset counters when content changes
+  if (content !== lastContent.current) {
+    headingCounters.current = {};
+    lastContent.current = content;
+  }
 
   const generateHeadingId = (text: string): string => {
-    return headingIds.get(text) || 'heading';
+    let id = text
+      .toLowerCase()
+      .replace(/[^\w\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .trim();
+    
+    if (!id) {
+      id = 'heading';
+    }
+    
+    if (headingCounters.current[id] !== undefined) {
+      headingCounters.current[id]++;
+      id = `${id}-${headingCounters.current[id]}`;
+    } else {
+      headingCounters.current[id] = 0;
+    }
+    
+    return id;
   };
 
   return (
