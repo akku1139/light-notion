@@ -53,6 +53,7 @@ export default function TableOfContents({ content, onLoadMore, hasMore }: TableO
     setHeadings(items);
   }, [content]);
 
+  // Scroll event listener - only add/remove once
   useEffect(() => {
     const updateActiveHeading = () => {
       const headingElements = Array.from(document.querySelectorAll('h1[id], h2[id], h3[id]'));
@@ -79,20 +80,48 @@ export default function TableOfContents({ content, onLoadMore, hasMore }: TableO
       }
     };
 
-    // Wait for DOM to be updated before setting initial heading
-    const rafId = requestAnimationFrame(() => {
-      updateActiveHeading();
-    });
+    // Set initial active heading
+    updateActiveHeading();
 
     // Listen to scroll events
     window.addEventListener('scroll', updateActiveHeading);
 
     // Cleanup
     return () => {
-      cancelAnimationFrame(rafId);
       window.removeEventListener('scroll', updateActiveHeading);
     };
-  }, [headings, content]);
+  }, []); // Empty dependency - only run once
+
+  // Update active heading when headings change (after loading more content)
+  useEffect(() => {
+    if (headings.length === 0) return;
+
+    // Use requestAnimationFrame to wait for DOM to be updated
+    const rafId = requestAnimationFrame(() => {
+      const headingElements = Array.from(document.querySelectorAll('h1[id], h2[id], h3[id]'));
+      if (headingElements.length === 0) return;
+
+      const scrollPosition = window.scrollY + 120;
+      let currentHeading = headingElements[0];
+      
+      for (const heading of headingElements) {
+        const rect = heading.getBoundingClientRect();
+        const headingTop = rect.top + window.scrollY;
+        
+        if (headingTop <= scrollPosition) {
+          currentHeading = heading;
+        } else {
+          break;
+        }
+      }
+
+      if (currentHeading && currentHeading.id) {
+        setActiveId(currentHeading.id);
+      }
+    });
+
+    return () => cancelAnimationFrame(rafId);
+  }, [headings]); // Only run when headings change
 
   const handleClick = async (e: React.MouseEvent, id: string) => {
     e.preventDefault();
