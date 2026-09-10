@@ -98,11 +98,11 @@ export default function PageView() {
 
   // Infinite scroll with IntersectionObserver
   useEffect(() => {
-    if (!id) return;
+    if (!id || !hasMore || !nextCursor) return;
 
     const observer = new IntersectionObserver(
       async (entries) => {
-        if (entries[0].isIntersecting && hasMoreRef.current && nextCursorRef.current && !loadingMoreRef.current) {
+        if (entries[0].isIntersecting && !loadingMoreRef.current) {
           await loadMoreBlocks();
         }
       },
@@ -117,7 +117,7 @@ export default function PageView() {
     }
 
     return () => observer.disconnect();
-  }, [id, loadMoreBlocks]);
+  }, [id, hasMore, nextCursor, loadMoreBlocks]);
 
   if (loading) {
     return (
