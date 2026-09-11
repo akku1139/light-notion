@@ -111,9 +111,15 @@ const CodeBlock = memo(function CodeBlock({ className, children }: {
           lang: lang as BundledLanguage,
           theme: theme as BundledTheme,
         });
+        
+        // Remove inline styles from Shiki output to let CSS control the appearance
+        const cleanedHtml = html
+          .replace(/style="[^"]*"/g, '')
+          .replace(/class="shiki[^"]*"/g, 'class="shiki-code"');
+        
         if (!cancelled) {
-          prevHtmlRef.current = html;
-          setHighlightedHtml(html);
+          prevHtmlRef.current = cleanedHtml;
+          setHighlightedHtml(cleanedHtml);
         }
       } catch {
         // Keep previous highlighted HTML on error

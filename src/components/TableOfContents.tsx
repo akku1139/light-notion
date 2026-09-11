@@ -86,10 +86,13 @@ const TableOfContents = memo(function TableOfContents({ content, onLoadMore, has
 
     window.addEventListener('scroll', handleScroll, { passive: true });
     
-    // Initial check
-    handleScroll();
+    // Initial check with delay to ensure DOM is ready
+    const timer = setTimeout(() => {
+      handleScroll();
+    }, 100);
 
     return () => {
+      clearTimeout(timer);
       window.removeEventListener('scroll', handleScroll);
     };
   }, []); // No dependencies - only run once

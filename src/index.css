@@ -27,7 +27,8 @@ html {
 }
 
 .shiki-container pre,
-.shiki-container pre.shiki {
+.shiki-container pre.shiki,
+.shiki-container pre.shiki-code {
   margin: 0 !important;
   padding: 0.75rem 1rem !important;
   border-radius: 0.5rem !important;
@@ -37,7 +38,8 @@ html {
 }
 
 .dark .shiki-container pre,
-.dark .shiki-container pre.shiki {
+.dark .shiki-container pre.shiki,
+.dark .shiki-container pre.shiki-code {
   background-color: rgb(17 24 39) !important;
   color: rgb(243 244 246) !important;
 }
