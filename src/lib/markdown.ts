@@ -238,11 +238,14 @@ export async function blocksToMarkdown(blocks: NotionBlock[]): Promise<string> {
         break;
       }
 
-      case 'equation':
-        // Block-level equation
-        lines.push(`$$${text}$$`);
+      case 'equation': {
+        // Block-level equation - extract from equation property
+        const equationData = (data as Record<string, unknown>).expression as string | undefined;
+        const equationText = equationData || text;
+        lines.push(`$$${equationText}$$`);
         lines.push('');
         break;
+      }
 
       default:
         if (text) {
