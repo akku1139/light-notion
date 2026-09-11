@@ -64,6 +64,8 @@ const CodeBlock = memo(function CodeBlock({ className, children }: {
   const lang = match ? match[1] : '';
   const code = useMemo(() => extractTextContent(children).replace(/\n$/, ''), [children]);
 
+  console.log('[CodeBlock] Called with:', { className, lang, code: code.substring(0, 50) });
+
   const [highlightedHtml, setHighlightedHtml] = useState<string | null>(null);
   const [isDarkMode, setIsDarkMode] = useState(() => {
     // Initialize with current dark mode state
@@ -94,8 +96,11 @@ const CodeBlock = memo(function CodeBlock({ className, children }: {
 
   useEffect(() => {
     if (!lang) {
+      console.log('[CodeBlock] No language detected, skipping Shiki');
       return;
     }
+
+    console.log('[CodeBlock] Starting Shiki highlight for lang:', lang);
 
     let cancelled = false;
     getHighlighter().then((highlighter) => {
@@ -103,14 +108,19 @@ const CodeBlock = memo(function CodeBlock({ className, children }: {
       try {
         // Check if language is loaded
         const loadedLangs = highlighter.getLoadedLanguages() as string[];
+        console.log('[CodeBlock] Loaded languages:', loadedLangs);
         if (!loadedLangs.includes(lang)) {
+          console.log('[CodeBlock] Language not loaded:', lang);
           return;
         }
         const theme = isDarkMode ? 'github-dark' : 'github-light';
+        console.log('[CodeBlock] Using theme:', theme);
         const html = highlighter.codeToHtml(code, {
           lang: lang as BundledLanguage,
           theme: theme as BundledTheme,
         });
+        
+        console.log('[CodeBlock] Generated HTML:', html.substring(0, 100));
         
         // Remove background-color and color from inline styles
         // Keep other styles and syntax highlighting colors on spans
@@ -118,11 +128,14 @@ const CodeBlock = memo(function CodeBlock({ className, children }: {
           .replace(/style="[^"]*background-color:[^"]*"/g, '')
           .replace(/class="shiki[^"]*"/g, 'class="shiki-code"');
         
+        console.log('[CodeBlock] Processed HTML:', processedHtml.substring(0, 100));
+        
         if (!cancelled) {
           prevHtmlRef.current = processedHtml;
           setHighlightedHtml(processedHtml);
         }
-      } catch {
+      } catch (error) {
+        console.error('[CodeBlock] Error during highlighting:', error);
         // Keep previous highlighted HTML on error
       }
     });
@@ -211,13 +224,17 @@ const MarkdownRenderer = memo(function MarkdownRenderer({ content }: MarkdownRen
         rehypePlugins={[rehypeKatex]}
         components={{
           code({ className, children, ...props }) {
+            console.log('[MarkdownRenderer] code component called with className:', className);
             const match = /language-(\w+)/.exec(className || '');
             const isBlock = match !== null;
+            console.log('[MarkdownRenderer] isBlock:', isBlock, 'match:', match);
             
             if (isBlock) {
+              console.log('[MarkdownRenderer] Rendering as CodeBlock');
               return <CodeBlock className={className}>{children}</CodeBlock>;
             }
             
+            console.log('[MarkdownRenderer] Rendering as inline code');
             // For inline code, render children as-is
             return (
               <code className={className} {...props}>
