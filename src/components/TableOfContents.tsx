@@ -50,15 +50,10 @@ const TableOfContents = memo(function TableOfContents({ content, onLoadMore, has
   const headings = extractHeadings(content);
   const [activeId, setActiveId] = useState<string>('');
   const tocRef = useRef<HTMLElement>(null);
-  const isProgrammaticScrollRef = useRef(false);
-  const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
 
   // Sync active heading with DOM headings on scroll
   useEffect(() => {
     const handleScroll = () => {
-      // Skip if this scroll was triggered programmatically
-      if (isProgrammaticScrollRef.current) return;
-
       // Find all heading elements in the main content
       const headingElements = Array.from(document.querySelectorAll('h1[data-toc-id], h2[data-toc-id], h3[data-toc-id]'));
       if (headingElements.length === 0) return;
@@ -107,8 +102,6 @@ const TableOfContents = memo(function TableOfContents({ content, onLoadMore, has
     const activeElement = tocContainer.querySelector(`[data-toc-id="${activeId}"]`);
     
     if (activeElement) {
-      isProgrammaticScrollRef.current = true;
-      
       // Calculate scroll position to center the active element in TOC container
       // Using scrollTop directly instead of scrollIntoView to avoid affecting main page scroll
       const containerRect = tocContainer.getBoundingClientRect();
@@ -125,20 +118,8 @@ const TableOfContents = memo(function TableOfContents({ content, onLoadMore, has
         top: targetScrollTop,
         behavior: 'smooth',
       });
-
-      clearTimeout(scrollTimeoutRef.current);
-      scrollTimeoutRef.current = setTimeout(() => {
-        isProgrammaticScrollRef.current = false;
-      }, 500);
     }
   }, [activeId]);
-
-  // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
-      clearTimeout(scrollTimeoutRef.current);
-    };
-  }, []);
 
   const handleClick = async (e: React.MouseEvent, id: string) => {
     e.preventDefault();
@@ -161,25 +142,8 @@ const TableOfContents = memo(function TableOfContents({ content, onLoadMore, has
     }
     
     if (element) {
-      // Mark as programmatic scroll to prevent handleScroll from overriding activeId
-      isProgrammaticScrollRef.current = true;
-      
       element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-
-      // Update highlight immediately
-      setActiveId(id);
-      
-      // Reset flag and ensure correct highlight after scroll completes
-      const finishScroll = () => {
-        isProgrammaticScrollRef.current = false;
-        setActiveId(id);
-      };
-
-      if ('onscrollend' in window) {
-        window.addEventListener('scrollend', finishScroll, { once: true });
-      } else {
-        setTimeout(finishScroll, 1000);
-      }
+      // handleScroll will naturally update activeId as the page scrolls
     }
   };
 
@@ -206,20 +170,8 @@ const TableOfContents = memo(function TableOfContents({ content, onLoadMore, has
             if (headings.length > 0) {
               const firstHeading = document.querySelector(`[data-toc-id="${headings[0].id}"]`) as HTMLElement;
               if (firstHeading) {
-                isProgrammaticScrollRef.current = true;
                 firstHeading.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                setActiveId(headings[0].id);
-                
-                const finishScroll = () => {
-                  isProgrammaticScrollRef.current = false;
-                  setActiveId(headings[0].id);
-                };
-                
-                if ('onscrollend' in window) {
-                  window.addEventListener('scrollend', finishScroll, { once: true });
-                } else {
-                  setTimeout(finishScroll, 1000);
-                }
+                // handleScroll will naturally update activeId as the page scrolls
               }
             }
           }}
