@@ -210,25 +210,14 @@ const MarkdownRenderer = memo(function MarkdownRenderer({ content }: MarkdownRen
         remarkPlugins={[remarkGfm, remarkMath]}
         rehypePlugins={[rehypeKatex]}
         components={{
-          pre({ children }) {
-            // Extract code element from children
-            const child = Array.isArray(children) ? children[0] : children;
-            if (child && typeof child === 'object' && 'props' in child) {
-              const codeProps = child.props as { className?: string; children?: React.ReactNode };
-              return (
-                <CodeBlock className={codeProps.className}>
-                  {codeProps.children}
-                </CodeBlock>
-              );
-            }
-            return <pre>{children}</pre>;
-          },
-          code({ className, children, node, ...props }) {
-            // Inline code (not inside pre)
-            const isBlock = className?.includes('language-');
+          code({ className, children, ...props }) {
+            const match = /language-(\w+)/.exec(className || '');
+            const isBlock = match !== null;
+            
             if (isBlock) {
               return <CodeBlock className={className}>{children}</CodeBlock>;
             }
+            
             // For inline code, render children as-is
             return (
               <code className={className} {...props}>
