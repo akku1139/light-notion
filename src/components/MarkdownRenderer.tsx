@@ -112,9 +112,11 @@ const CodeBlock = memo(function CodeBlock({ className, children }: {
           theme: theme as BundledTheme,
         });
         
-        // Keep Shiki's inline styles for syntax highlighting colors
-        // Only modify the class name for CSS targeting
-        const processedHtml = html.replace(/class="shiki[^"]*"/g, 'class="shiki-code"');
+        // Remove background-color and color from inline styles
+        // Keep other styles and syntax highlighting colors on spans
+        const processedHtml = html
+          .replace(/style="[^"]*background-color:[^"]*"/g, '')
+          .replace(/class="shiki[^"]*"/g, 'class="shiki-code"');
         
         if (!cancelled) {
           prevHtmlRef.current = processedHtml;
