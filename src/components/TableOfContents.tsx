@@ -49,6 +49,7 @@ function extractHeadings(content: string): TocItem[] {
 const TableOfContents = memo(function TableOfContents({ content, onLoadMore, hasMore }: TableOfContentsProps) {
   const headings = extractHeadings(content);
   const [activeId, setActiveId] = useState<string>('');
+  const [forceUpdate, setForceUpdate] = useState(0);
   const tocRef = useRef<HTMLElement>(null);
 
   // Sync active heading with DOM headings on scroll
@@ -100,6 +101,7 @@ const TableOfContents = memo(function TableOfContents({ content, onLoadMore, has
       if (currentId) {
         console.log('[TOC] Setting activeId', { currentId });
         setActiveId(currentId);
+        setForceUpdate(prev => prev + 1); // Force re-render
       }
     };
 
