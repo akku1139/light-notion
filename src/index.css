@@ -34,14 +34,12 @@ html {
   border-radius: 0.5rem !important;
   overflow-x: auto !important;
   background-color: rgb(249 250 251) !important;
-  color: rgb(17 24 39) !important;
 }
 
 .dark .shiki-container pre,
 .dark .shiki-container pre.shiki,
 .dark .shiki-container pre.shiki-code {
   background-color: rgb(17 24 39) !important;
-  color: rgb(243 244 246) !important;
 }
 
 .shiki-container code {
