@@ -38,7 +38,68 @@ function richTextToMarkdown(items: RichTextItem[]): string {
   }).join('');
 }
 
-export function blocksToMarkdown(blocks: NotionBlock[]): string {
+import { getBlocks } from './notion';
+
+// Resolve reference-style links from Notion
+// Notion format: [[1]](1) in text, [[1]](1): [Title](URL) in definitions
+// Standard format: [1] in text, [1]: URL in definitions
+export function resolveReferenceLinks(text: string): string {
+  const refLinks: Record<string, string> = {};
+  
+  // Step 1: Normalize [[N]](N) to [N]
+  let normalized = text.replace(/\[\[(\d+)\]\]\(\d+\)/g, '[$1]');
+  
+  // Step 2: Match reference definitions
+  // Formats:
+  // - [N]: [Title](URL)
+  // - [N]: URL
+  // - [N]: title: URL
+  const refDefRegex = /^\[(\d+)\]:\s+(.+)$/gm;
+  let match;
+  
+  while ((match = refDefRegex.exec(normalized)) !== null) {
+    const ref = match[1];
+    const content = match[2].trim();
+    let url = '';
+    
+    // Try to extract URL from [Title](URL) format
+    const markdownLinkMatch = content.match(/^\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)$/);
+    if (markdownLinkMatch) {
+      url = markdownLinkMatch[2];
+    } else {
+      // Try title: URL format
+      const titleUrlMatch = content.match(/^(.+?):\s+(https?:\/\/\S+)$/);
+      if (titleUrlMatch) {
+        url = titleUrlMatch[2];
+      } else if (content.match(/^https?:\/\//)) {
+        // Direct URL
+        url = content;
+      }
+    }
+    
+    if (url) {
+      refLinks[ref] = url;
+    }
+  }
+  
+  // Step 3: Remove reference definitions
+  normalized = normalized.replace(refDefRegex, '').trim();
+  
+  // Step 4: Replace [text][ref] with [text](url)
+  for (const [ref, url] of Object.entries(refLinks)) {
+    // Match [text][ref] pattern
+    const refLinkRegex = new RegExp(`\\[([^\\]]+)\\]\\[${ref}\\]`, 'g');
+    normalized = normalized.replace(refLinkRegex, `[$1](${url})`);
+    
+    // Also handle standalone [ref] pattern
+    const standaloneRefRegex = new RegExp(`\\[${ref}\\](?!\\[|\\()`, 'g');
+    normalized = normalized.replace(standaloneRefRegex, `[${ref}](${url})`);
+  }
+  
+  return normalized;
+}
+
+export async function blocksToMarkdown(blocks: NotionBlock[]): Promise<string> {
   const lines: string[] = [];
 
   for (const block of blocks) {
@@ -49,7 +110,7 @@ export function blocksToMarkdown(blocks: NotionBlock[]): string {
     if (!data) continue;
 
     const richText = (data.rich_text || []) as RichTextItem[];
-    const text = richTextToMarkdown(richText);
+    let text = richTextToMarkdown(richText);
 
     switch (blockType) {
       case 'paragraph':
@@ -141,15 +202,55 @@ export function blocksToMarkdown(blocks: NotionBlock[]): string {
 
       case 'table': {
         // Tables need children blocks (rows)
-        lines.push('<!-- table -->');
+        const blockId = (block as Record<string, unknown>).id as string;
+        if (blockId) {
+          try {
+            const childrenData = await getBlocks(blockId);
+            const rows = childrenData.results;
+            const hasHeader = (data as Record<string, unknown>).has_column_header as boolean;
+            
+            if (rows.length > 0) {
+              // Convert table rows to markdown
+              const tableRows: string[][] = [];
+              
+              for (const row of rows) {
+                if (!('type' in row) || row.type !== 'table_row') continue;
+                const rowData = (row as Record<string, unknown>).table_row as Record<string, unknown> | undefined;
+                if (!rowData) continue;
+                
+                const cells = (rowData.cells || []) as RichTextItem[][];
+                const cellTexts = cells.map(cell => richTextToMarkdown(cell).replace(/\|/g, '\\|').replace(/\n/g, ' '));
+                tableRows.push(cellTexts);
+              }
+              
+              if (tableRows.length > 0) {
+                // Header row
+                lines.push('| ' + tableRows[0].join(' | ') + ' |');
+                // Separator
+                lines.push('| ' + tableRows[0].map(() => '---').join(' | ') + ' |');
+                // Data rows
+                for (let i = 1; i < tableRows.length; i++) {
+                  lines.push('| ' + tableRows[i].join(' | ') + ' |');
+                }
+                lines.push('');
+              }
+            }
+          } catch (err) {
+            console.error('Failed to load table children:', err);
+            lines.push('<!-- table (failed to load) -->');
+          }
+        }
         break;
       }
 
-      case 'equation':
-        // Block-level equation
-        lines.push(`$$${text}$$`);
+      case 'equation': {
+        // Block-level equation - extract from equation property
+        const equationData = (data as Record<string, unknown>).expression as string | undefined;
+        const equationText = equationData || text;
+        lines.push(`$$${equationText}$$`);
         lines.push('');
         break;
+      }
 
       default:
         if (text) {
@@ -160,7 +261,12 @@ export function blocksToMarkdown(blocks: NotionBlock[]): string {
     }
   }
 
-  return lines.join('\n');
+  let result = lines.join('\n');
+
+  // Resolve reference-style links
+  result = resolveReferenceLinks(result);
+
+  return result;
 }
 
 export function markdownToNotionBlocks(markdown: string): unknown[] {

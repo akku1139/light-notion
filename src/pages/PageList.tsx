@@ -1,8 +1,105 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { FileText, Clock, RefreshCw, Database, Globe, Loader2 } from 'lucide-react';
+import { FileText, Clock, RefreshCw, Database, Globe, Loader2, ChevronRight } from 'lucide-react';
 import { queryDatabase, searchPages, getPageTitle, getPageExcerpt, type NotionPage } from '../lib/notion';
 import { getDatabaseId } from '../lib/auth';
+import { getCachedPages, setCachedPages, clearCache } from '../lib/cache';
+
+interface TreeNode {
+  page: NotionPage;
+  children: TreeNode[];
+}
+
+interface TreeNodeComponentProps {
+  node: TreeNode;
+  depth: number;
+  expandedNodes: Set<string>;
+  toggleNode: (pageId: string) => void;
+  formatDate: (dateStr: string) => string;
+}
+
+function TreeNodeComponent({ node, depth, expandedNodes, toggleNode, formatDate }: TreeNodeComponentProps) {
+  const { page, children } = node;
+  const title = getPageTitle(page);
+  const excerpt = getPageExcerpt(page);
+  const hasChildren = children.length > 0;
+  const isExpanded = expandedNodes.has(page.id);
+
+  return (
+    <div>
+      <div
+        className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md hover:border-blue-300 dark:hover:border-blue-700 transition-all group"
+        style={{ marginLeft: `${depth * 24}px` }}
+      >
+        <div className="flex items-start gap-3">
+          {/* Expand/Collapse button */}
+          {hasChildren ? (
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                toggleNode(page.id);
+              }}
+              className="flex-shrink-0 mt-0.5 p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+            >
+              <ChevronRight
+                size={16}
+                className={`text-gray-400 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
+              />
+            </button>
+          ) : (
+            <div className="flex-shrink-0 w-6 mt-0.5" />
+          )}
+
+          {/* Icon */}
+          <Link to={`/page/${page.id}`} className="flex-shrink-0 mt-0.5">
+            {page.icon && page.icon.type === 'emoji' ? (
+              <span className="text-2xl">{page.icon.emoji}</span>
+            ) : (
+              <FileText size={24} className="text-gray-400" />
+            )}
+          </Link>
+
+          {/* Content */}
+          <Link to={`/page/${page.id}`} className="flex-1 min-w-0">
+            <h3 className="font-semibold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors truncate">
+              {title}
+            </h3>
+            {excerpt && (
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{excerpt}</p>
+            )}
+            <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
+              <span className="flex items-center gap-1">
+                <Clock size={12} />
+                {formatDate(page.last_edited_time)}
+              </span>
+              {hasChildren && (
+                <span className="text-gray-400">
+                  {children.length} {children.length === 1 ? 'child' : 'children'}
+                </span>
+              )}
+            </div>
+          </Link>
+        </div>
+      </div>
+
+      {/* Children */}
+      {hasChildren && isExpanded && (
+        <div className="mt-1">
+          {children.map(child => (
+            <TreeNodeComponent
+              key={child.page.id}
+              node={child}
+              depth={depth + 1}
+              expandedNodes={expandedNodes}
+              toggleNode={toggleNode}
+              formatDate={formatDate}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function PageList() {
   const [pages, setPages] = useState<NotionPage[]>([]);
@@ -11,16 +108,37 @@ export default function PageList() {
   const [error, setError] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
 
   const databaseId = getDatabaseId();
   const isDatabaseMode = !!databaseId;
 
-  const loadPages = async (cursor?: string) => {
+  useEffect(() => {
+    if (isDatabaseMode) {
+      document.title = 'Database Pages - Notion Lite';
+    } else {
+      document.title = 'All Pages - Notion Lite';
+    }
+  }, [isDatabaseMode]);
+
+  const loadPages = async (cursor?: string, forceRefresh = false) => {
     setLoading(!cursor);
     setLoadingMore(!!cursor);
     setError(null);
 
+    const cacheKey = isDatabaseMode ? databaseId : 'workspace';
+
     try {
+      // Check cache for initial load (not pagination)
+      if (!cursor && !forceRefresh) {
+        const cachedPages = getCachedPages(cacheKey);
+        if (cachedPages) {
+          setPages(cachedPages);
+          setLoading(false);
+          // Continue to fetch fresh data in background
+        }
+      }
+
       if (isDatabaseMode) {
         // Database mode: query specific database
         const result = await queryDatabase(
@@ -29,10 +147,13 @@ export default function PageList() {
           [{ timestamp: 'last_edited_time', direction: 'descending' }],
           cursor
         );
+        
         if (cursor) {
           setPages(prev => [...prev, ...result.results]);
         } else {
           setPages(result.results);
+          // Cache the first page of results
+          setCachedPages(cacheKey, result.results);
         }
         setHasMore(result.has_more);
         setNextCursor(result.next_cursor);
@@ -43,6 +164,8 @@ export default function PageList() {
           setPages(prev => [...prev, ...result.results]);
         } else {
           setPages(result.results);
+          // Cache the first page of results
+          setCachedPages(cacheKey, result.results);
         }
         setHasMore(result.has_more);
         setNextCursor(result.next_cursor);
@@ -73,6 +196,43 @@ export default function PageList() {
     });
   };
 
+  // Build tree structure from flat page list
+  const buildTree = (pages: NotionPage[]): TreeNode[] => {
+    const pageMap = new Map<string, TreeNode>();
+    const roots: TreeNode[] = [];
+
+    // First pass: create nodes
+    pages.forEach(page => {
+      pageMap.set(page.id, { page, children: [] });
+    });
+
+    // Second pass: build tree
+    pages.forEach(page => {
+      const node = pageMap.get(page.id)!;
+      const parentId = page.parent.type === 'page_id' ? page.parent.page_id : null;
+      
+      if (parentId && pageMap.has(parentId)) {
+        pageMap.get(parentId)!.children.push(node);
+      } else {
+        roots.push(node);
+      }
+    });
+
+    return roots;
+  };
+
+  const toggleNode = (pageId: string) => {
+    setExpandedNodes(prev => {
+      const next = new Set(prev);
+      if (next.has(pageId)) {
+        next.delete(pageId);
+      } else {
+        next.add(pageId);
+      }
+      return next;
+    });
+  };
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -96,9 +256,13 @@ export default function PageList() {
           </p>
         </div>
         <button
-          onClick={() => loadPages()}
+          onClick={() => {
+            clearCache(isDatabaseMode ? databaseId : 'workspace');
+            loadPages(undefined, true);
+          }}
           disabled={loading}
           className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors disabled:opacity-50"
+          title="Force refresh (bypasses cache)"
         >
           <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
           Refresh
@@ -128,42 +292,17 @@ export default function PageList() {
         </div>
       ) : (
         <>
-          <div className="grid gap-3">
-            {pages.map(page => {
-              const title = getPageTitle(page);
-              const excerpt = getPageExcerpt(page);
-              return (
-                <Link
-                  key={page.id}
-                  to={`/page/${page.id}`}
-                  className="block bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md hover:border-blue-300 dark:hover:border-blue-700 transition-all group"
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="flex-shrink-0 mt-0.5">
-                      {page.icon && page.icon.type === 'emoji' ? (
-                        <span className="text-2xl">{page.icon.emoji}</span>
-                      ) : (
-                        <FileText size={24} className="text-gray-400" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors truncate">
-                        {title}
-                      </h3>
-                      {excerpt && (
-                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{excerpt}</p>
-                      )}
-                      <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
-                        <span className="flex items-center gap-1">
-                          <Clock size={12} />
-                          {formatDate(page.last_edited_time)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </Link>
-              );
-            })}
+          <div className="space-y-1">
+            {buildTree(pages).map(node => (
+              <TreeNodeComponent
+                key={node.page.id}
+                node={node}
+                depth={0}
+                expandedNodes={expandedNodes}
+                toggleNode={toggleNode}
+                formatDate={formatDate}
+              />
+            ))}
           </div>
 
           {/* Load more button */}

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, FileText, Clock, Loader2 } from 'lucide-react';
 import { searchPages, getPageTitle, getPageExcerpt, type NotionPage } from '../lib/notion';
@@ -8,6 +8,10 @@ export default function SearchPage() {
   const [results, setResults] = useState<NotionPage[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
+
+  useEffect(() => {
+    document.title = 'Search - Notion Lite';
+  }, []);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();

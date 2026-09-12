@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Edit, Clock, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Edit, Clock, ExternalLink, Loader2 } from 'lucide-react';
 import { getPage, getBlocks, getPageTitle, type NotionPage, type NotionBlock } from '../lib/notion';
 import { blocksToMarkdown } from '../lib/markdown';
 import MarkdownRenderer from '../components/MarkdownRenderer';
+import TableOfContents from '../components/TableOfContents';
 
 export default function PageView() {
   const { id } = useParams<{ id: string }>();
@@ -11,7 +12,69 @@ export default function PageView() {
   const [blocks, setBlocks] = useState<NotionBlock[]>([]);
   const [markdown, setMarkdown] = useState('');
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const observerRef = useRef<HTMLDivElement>(null);
+  const loadingMoreRef = useRef(false);
+  const hasMoreRef = useRef(false);
+  const nextCursorRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (page) {
+      const title = getPageTitle(page);
+      document.title = `${title} - Notion Lite`;
+    }
+  }, [page]);
+
+  // Keep refs in sync with state
+  useEffect(() => {
+    loadingMoreRef.current = loadingMore;
+  }, [loadingMore]);
+
+  useEffect(() => {
+    hasMoreRef.current = hasMore;
+  }, [hasMore]);
+
+  useEffect(() => {
+    nextCursorRef.current = nextCursor;
+  }, [nextCursor]);
+
+  // Load more blocks function (shared between infinite scroll and TOC navigation)
+  const loadMoreBlocks = useCallback(async (): Promise<boolean> => {
+    if (!hasMoreRef.current || !nextCursorRef.current || loadingMoreRef.current || !id) return false;
+    
+    setLoadingMore(true);
+    try {
+      const response = await fetch(`/api/notion/v1/blocks/${id}/children?start_cursor=${nextCursorRef.current}&page_size=100`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-notion-token': localStorage.getItem('notion_api_token') || '',
+          'x-notion-version': '2026-03-11',
+        },
+      });
+      
+      if (!response.ok) throw new Error('Failed to load more blocks');
+      
+      const data = await response.json() as { results: NotionBlock[]; has_more: boolean; next_cursor: string | null };
+      const newBlocks = data.results;
+      
+      setBlocks(prev => [...prev, ...newBlocks]);
+      const additionalMarkdown = await blocksToMarkdown(newBlocks);
+      setMarkdown(prev => prev + '\n' + additionalMarkdown);
+      setHasMore(data.has_more);
+      setNextCursor(data.next_cursor);
+      
+      return data.has_more;
+    } catch (err) {
+      console.error('Failed to load more blocks:', err);
+      return false;
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [id]);
 
   useEffect(() => {
     if (!id) return;
@@ -26,7 +89,10 @@ export default function PageView() {
         ]);
         setPage(pageData);
         setBlocks(blocksData.results);
-        setMarkdown(blocksToMarkdown(blocksData.results));
+        const markdownText = await blocksToMarkdown(blocksData.results);
+        setMarkdown(markdownText);
+        setHasMore(blocksData.has_more);
+        setNextCursor(blocksData.next_cursor);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load page');
       } finally {
@@ -36,6 +102,29 @@ export default function PageView() {
 
     loadPage();
   }, [id]);
+
+  // Infinite scroll with IntersectionObserver
+  useEffect(() => {
+    if (!id || !hasMore || !nextCursor) return;
+
+    const observer = new IntersectionObserver(
+      async (entries) => {
+        if (entries[0].isIntersecting && !loadingMoreRef.current) {
+          await loadMoreBlocks();
+        }
+      },
+      { 
+        threshold: 0.1,
+        rootMargin: '0px 0px 1000px 0px' // Start loading 1000px before reaching the bottom
+      }
+    );
+
+    if (observerRef.current) {
+      observer.observe(observerRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [id, hasMore, nextCursor, loadMoreBlocks]);
 
   if (loading) {
     return (
@@ -63,7 +152,7 @@ export default function PageView() {
   const title = getPageTitle(page);
 
   return (
-    <div className="max-w-3xl mx-auto">
+    <div className="max-w-7xl mx-auto">
       {/* Navigation */}
       <div className="flex items-center justify-between mb-6">
         <Link to="/pages" className="flex items-center gap-1 text-sm text-gray-500 hover:text-blue-600 transition-colors">
@@ -112,18 +201,48 @@ export default function PageView() {
         </div>
       </div>
 
-      {/* Content */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 md:p-8">
-        {markdown ? (
-          <MarkdownRenderer content={markdown} />
-        ) : (
-          <p className="text-gray-500 italic">This page has no content blocks.</p>
-        )}
-      </div>
+      {/* Two column layout */}
+      <div className="flex gap-8">
+        {/* Main content */}
+        <div className="flex-1 min-w-0">
+          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 md:p-8">
+            {markdown ? (
+              <MarkdownRenderer content={markdown} />
+            ) : (
+              <p className="text-gray-500 italic">This page has no content blocks.</p>
+            )}
+          </div>
 
-      {/* Block count info */}
-      <div className="mt-4 text-xs text-gray-400 text-center">
-        {blocks.length} blocks loaded
+          {/* Loading indicator for infinite scroll */}
+          {loadingMore && (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 size={24} className="animate-spin text-blue-600" />
+              <span className="ml-2 text-gray-500">Loading more content...</span>
+            </div>
+          )}
+
+          {/* Intersection observer target */}
+          {hasMore && !loadingMore && (
+            <div ref={observerRef} className="h-20 flex items-center justify-center">
+              <p className="text-sm text-gray-400">Scroll to load more</p>
+            </div>
+          )}
+
+          {/* Block count info */}
+          <div className="mt-4 text-xs text-gray-400 text-center">
+            {blocks.length} blocks loaded
+            {hasMore && ' (more available)'}
+          </div>
+        </div>
+
+        {/* Table of Contents */}
+        <aside className="hidden xl:block w-64 flex-shrink-0">
+          <TableOfContents 
+            content={markdown} 
+            onLoadMore={loadMoreBlocks}
+            hasMore={hasMore}
+          />
+        </aside>
       </div>
     </div>
   );

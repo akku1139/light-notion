@@ -9,6 +9,8 @@ A lightweight Notion client built with React + Vite + Tailwind CSS, deployable o
 - ✏️ **Edit Pages** - Edit pages using Markdown (Markdown → Notion blocks conversion)
 - 🔍 **Search** - Full-text search across your Notion workspace
 - 🔢 **Math Equations** - Render LaTeX math equations with KaTeX (inline `$...$` and block `$$...$$`)
+- 🎨 **Syntax Highlighting** - Beautiful code highlighting with Shiki (supports 100+ languages)
+- 📜 **Infinite Scroll** - Automatically loads more content as you scroll down long articles
 - 🔒 **Auth** - Local token storage (no server-side auth needed)
 - 🔄 **API Proxy** - Cloudflare Pages Functions handles CORS & proxies to Notion API
 - 🌐 **Workspace Mode** - Browse all pages without specifying a database ID
