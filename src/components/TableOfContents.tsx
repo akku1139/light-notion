@@ -49,7 +49,6 @@ function extractHeadings(content: string): TocItem[] {
 const TableOfContents = memo(function TableOfContents({ content, onLoadMore, hasMore }: TableOfContentsProps) {
   const headings = extractHeadings(content);
   const [activeId, setActiveId] = useState<string>('');
-  const [forceUpdate, setForceUpdate] = useState(0);
   const tocRef = useRef<HTMLElement>(null);
 
   // Sync active heading with DOM headings on scroll
@@ -57,17 +56,7 @@ const TableOfContents = memo(function TableOfContents({ content, onLoadMore, has
     const handleScroll = () => {
       // Find all heading elements in the main content
       const headingElements = Array.from(document.querySelectorAll('h1[data-toc-id], h2[data-toc-id], h3[data-toc-id]'));
-      
-      console.log('[TOC] handleScroll called', {
-        headingCount: headingElements.length,
-        scrollTop: window.scrollY,
-        headingIds: headingElements.map(h => h.getAttribute('data-toc-id')),
-      });
-      
-      if (headingElements.length === 0) {
-        console.log('[TOC] No headings found in DOM');
-        return;
-      }
+      if (headingElements.length === 0) return;
 
       const scrollTop = window.scrollY || document.documentElement.scrollTop;
       const headerOffset = 120;
@@ -77,13 +66,6 @@ const TableOfContents = memo(function TableOfContents({ content, onLoadMore, has
       for (const heading of headingElements) {
         const rect = heading.getBoundingClientRect();
         const headingTop = rect.top + scrollTop;
-        
-        console.log('[TOC] Checking heading', {
-          id: heading.getAttribute('data-toc-id'),
-          headingTop,
-          scrollPosition: scrollTop + headerOffset,
-          isAbove: headingTop <= scrollTop + headerOffset,
-        });
         
         if (headingTop <= scrollTop + headerOffset) {
           currentId = heading.getAttribute('data-toc-id') || '';
@@ -95,18 +77,14 @@ const TableOfContents = memo(function TableOfContents({ content, onLoadMore, has
       // If no heading is above scroll position, use the first heading
       if (!currentId && headingElements.length > 0) {
         currentId = headingElements[0].getAttribute('data-toc-id') || '';
-        console.log('[TOC] Using first heading as fallback', { currentId });
       }
 
       if (currentId) {
-        console.log('[TOC] Setting activeId', { currentId });
         setActiveId(currentId);
-        setForceUpdate(prev => prev + 1); // Force re-render
       }
     };
 
     // Initial check
-    console.log('[TOC] Initial check');
     handleScroll();
 
     // Listen to scroll events
@@ -116,6 +94,40 @@ const TableOfContents = memo(function TableOfContents({ content, onLoadMore, has
       window.removeEventListener('scroll', handleScroll);
     };
   }, []); // Empty dependency - only run once
+
+  // Recalculate activeId when content changes (e.g., when new pages are loaded)
+  useEffect(() => {
+    // Wait for DOM to update after content change
+    const timer = setTimeout(() => {
+      const headingElements = Array.from(document.querySelectorAll('h1[data-toc-id], h2[data-toc-id], h3[data-toc-id]'));
+      if (headingElements.length === 0) return;
+
+      const scrollTop = window.scrollY || document.documentElement.scrollTop;
+      const headerOffset = 120;
+
+      let currentId = '';
+      for (const heading of headingElements) {
+        const rect = heading.getBoundingClientRect();
+        const headingTop = rect.top + scrollTop;
+        
+        if (headingTop <= scrollTop + headerOffset) {
+          currentId = heading.getAttribute('data-toc-id') || '';
+        } else {
+          break;
+        }
+      }
+
+      if (!currentId && headingElements.length > 0) {
+        currentId = headingElements[0].getAttribute('data-toc-id') || '';
+      }
+
+      if (currentId) {
+        setActiveId(currentId);
+      }
+    }, 0);
+
+    return () => clearTimeout(timer);
+  }, [content]); // Run when content changes
 
   // Auto-scroll TOC to show active heading
   useEffect(() => {
