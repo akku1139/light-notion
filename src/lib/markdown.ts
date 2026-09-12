@@ -85,10 +85,15 @@ export function resolveReferenceLinks(text: string): string {
   // Step 3: Remove reference definitions
   normalized = normalized.replace(refDefRegex, '').trim();
   
-  // Step 4: Replace references with inline links
+  // Step 4: Replace [text][ref] with [text](url)
   for (const [ref, url] of Object.entries(refLinks)) {
-    const refRegex = new RegExp(`\\[${ref}\\](?!\\()`, 'g');
-    normalized = normalized.replace(refRegex, `[${ref}](${url})`);
+    // Match [text][ref] pattern
+    const refLinkRegex = new RegExp(`\\[([^\\]]+)\\]\\[${ref}\\]`, 'g');
+    normalized = normalized.replace(refLinkRegex, `[$1](${url})`);
+    
+    // Also handle standalone [ref] pattern
+    const standaloneRefRegex = new RegExp(`\\[${ref}\\](?!\\[|\\()`, 'g');
+    normalized = normalized.replace(standaloneRefRegex, `[${ref}](${url})`);
   }
   
   return normalized;

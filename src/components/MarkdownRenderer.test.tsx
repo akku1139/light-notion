@@ -121,7 +121,7 @@ describe('MarkdownRenderer - Math Equations', () => {
   });
 
   it('should render block math', async () => {
-    const markdown = '$$\n\\\\int_0^\\\\infty e^{-x} dx = 1\n$$';
+    const markdown = '$$\n\\int_0^\\infty e^{-x} dx = 1\n$$';
     render(<MarkdownRenderer content={markdown} />);
     
     await waitFor(() => {
