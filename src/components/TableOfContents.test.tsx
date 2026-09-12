@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render } from '@testing-library/react';
+import { render, waitFor } from '@testing-library/react';
 import TableOfContents from './TableOfContents';
 
 describe('TableOfContents', () => {
@@ -75,5 +75,33 @@ describe('TableOfContents', () => {
       
       expect(onLoadMore).toHaveBeenCalled();
     }
+  });
+
+  it('should render links for all headings', () => {
+    const content = '# First Heading\n\n## Second Heading\n\n### Third Heading';
+    
+    const { container } = render(<TableOfContents content={content} />);
+    
+    const links = container.querySelectorAll('a');
+    expect(links.length).toBe(3);
+    
+    expect(links[0].textContent).toBe('First Heading');
+    expect(links[1].textContent).toBe('Second Heading');
+    expect(links[2].textContent).toBe('Third Heading');
+  });
+
+  it('should update links when content changes', () => {
+    const initialContent = '# First Heading';
+    const { container, rerender } = render(<TableOfContents content={initialContent} />);
+    
+    let links = container.querySelectorAll('a');
+    expect(links.length).toBe(1);
+    
+    // Update content with new heading
+    const newContent = '# First Heading\n\n## Second Heading';
+    rerender(<TableOfContents content={newContent} />);
+    
+    links = container.querySelectorAll('a');
+    expect(links.length).toBe(2);
   });
 });

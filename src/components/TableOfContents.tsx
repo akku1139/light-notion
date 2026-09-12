@@ -86,16 +86,13 @@ const TableOfContents = memo(function TableOfContents({ content, onLoadMore, has
 
     window.addEventListener('scroll', handleScroll, { passive: true });
     
-    // Initial check with delay to ensure DOM is ready
-    const timer = setTimeout(() => {
-      handleScroll();
-    }, 100);
+    // Initial check
+    handleScroll();
 
     return () => {
-      clearTimeout(timer);
       window.removeEventListener('scroll', handleScroll);
     };
-  }, []); // No dependencies - only run once
+  }, [headings]); // Re-run when headings change
 
   // Auto-scroll TOC to show active heading
   useEffect(() => {
@@ -104,7 +101,7 @@ const TableOfContents = memo(function TableOfContents({ content, onLoadMore, has
     const tocContainer = tocRef.current;
     const activeElement = tocContainer.querySelector(`[data-toc-id="${activeId}"]`);
     
-    if (activeElement) {
+    if (activeElement && typeof tocContainer.scrollTo === 'function') {
       // Calculate scroll position to center the active element in TOC container
       // Using scrollTop directly instead of scrollIntoView to avoid affecting main page scroll
       const containerRect = tocContainer.getBoundingClientRect();
