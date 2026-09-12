@@ -92,7 +92,7 @@ const TableOfContents = memo(function TableOfContents({ content, onLoadMore, has
     return () => {
       window.removeEventListener('scroll', handleScroll);
     };
-  }, [content]); // Re-run when content changes, not when headings array reference changes
+  }, []); // Run only once on mount, not when content changes
 
   // Auto-scroll TOC to show active heading
   useEffect(() => {
