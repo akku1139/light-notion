@@ -1,9 +1,6 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
-/* Enable class-based dark mode for Tailwind v4 */
-@custom-variant dark (&:where(.dark, .dark *));
-
 /* Offset for sticky header when scrolling to headings */
 html {
   scroll-padding-top: 120px;
@@ -32,25 +29,32 @@ html {
 .shiki-container pre,
 .shiki-container pre.shiki,
 .shiki-container pre.shiki-code {
-  margin: 0 !important;
-  padding: 0.75rem 1rem !important;
-  border-radius: 0.5rem !important;
-  overflow-x: auto !important;
-  background-color: rgb(249 250 251) !important;
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  overflow-x: auto;
 }
 
-.dark .shiki-container pre,
-.dark .shiki-container pre.shiki,
-.dark .shiki-container pre.shiki-code {
-  background-color: rgb(17 24 39) !important;
+@media (prefers-color-scheme: dark) {
+  .shiki-container pre,
+  .shiki-container pre.shiki,
+  .shiki-container pre.shiki-code {
+    background-color: rgb(17 24 39);
+  }
+}
+
+html.dark .shiki-container pre,
+html.dark .shiki-container pre.shiki,
+html.dark .shiki-container pre.shiki-code {
+  background-color: rgb(17 24 39);
 }
 
 .shiki-container code {
-  background: transparent !important;
-  padding: 0 !important;
-  font-size: 0.875rem !important;
-  line-height: 1.6 !important;
-  color: inherit !important;
+  background: transparent;
+  padding: 0;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: inherit;
 }
 
 /* Fix for inline code in prose */
@@ -76,23 +80,30 @@ html.dark .prose :not(pre) > code {
 
 /* Regular code blocks (without shiki) */
 .prose pre {
-  background-color: rgb(249 250 251) !important;
-  color: rgb(17 24 39) !important;
+  background-color: rgb(249 250 251);
+  color: rgb(17 24 39);
   padding: 0.75rem 1rem;
   border-radius: 0.5rem;
   overflow-x: auto;
   margin: 0.5rem 0;
 }
 
-.dark .prose pre {
-  background-color: rgb(17 24 39) !important;
-  color: rgb(243 244 246) !important;
+@media (prefers-color-scheme: dark) {
+  .prose pre {
+    background-color: rgb(17 24 39);
+    color: rgb(243 244 246);
+  }
+}
+
+html.dark .prose pre {
+  background-color: rgb(17 24 39);
+  color: rgb(243 244 246);
 }
 
 .prose pre code {
-  background: transparent !important;
+  background: transparent;
   padding: 0;
-  color: inherit !important;
+  color: inherit;
   font-size: 0.875rem;
   line-height: 1.6;
 }
