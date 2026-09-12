@@ -56,7 +56,17 @@ const TableOfContents = memo(function TableOfContents({ content, onLoadMore, has
     const handleScroll = () => {
       // Find all heading elements in the main content
       const headingElements = Array.from(document.querySelectorAll('h1[data-toc-id], h2[data-toc-id], h3[data-toc-id]'));
-      if (headingElements.length === 0) return;
+      
+      console.log('[TOC] handleScroll called', {
+        headingCount: headingElements.length,
+        scrollTop: window.scrollY,
+        headingIds: headingElements.map(h => h.getAttribute('data-toc-id')),
+      });
+      
+      if (headingElements.length === 0) {
+        console.log('[TOC] No headings found in DOM');
+        return;
+      }
 
       const scrollTop = window.scrollY || document.documentElement.scrollTop;
       const headerOffset = 120;
@@ -66,6 +76,13 @@ const TableOfContents = memo(function TableOfContents({ content, onLoadMore, has
       for (const heading of headingElements) {
         const rect = heading.getBoundingClientRect();
         const headingTop = rect.top + scrollTop;
+        
+        console.log('[TOC] Checking heading', {
+          id: heading.getAttribute('data-toc-id'),
+          headingTop,
+          scrollPosition: scrollTop + headerOffset,
+          isAbove: headingTop <= scrollTop + headerOffset,
+        });
         
         if (headingTop <= scrollTop + headerOffset) {
           currentId = heading.getAttribute('data-toc-id') || '';
@@ -77,22 +94,26 @@ const TableOfContents = memo(function TableOfContents({ content, onLoadMore, has
       // If no heading is above scroll position, use the first heading
       if (!currentId && headingElements.length > 0) {
         currentId = headingElements[0].getAttribute('data-toc-id') || '';
+        console.log('[TOC] Using first heading as fallback', { currentId });
       }
 
       if (currentId) {
+        console.log('[TOC] Setting activeId', { currentId });
         setActiveId(currentId);
       }
     };
 
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    
     // Initial check
+    console.log('[TOC] Initial check');
     handleScroll();
+
+    // Listen to scroll events
+    window.addEventListener('scroll', handleScroll, { passive: true });
 
     return () => {
       window.removeEventListener('scroll', handleScroll);
     };
-  }, []); // Run only once on mount, not when content changes
+  }, []); // Empty dependency - only run once
 
   // Auto-scroll TOC to show active heading
   useEffect(() => {
