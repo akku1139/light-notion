@@ -112,10 +112,10 @@ const CodeBlock = memo(function CodeBlock({ className, children }: {
           theme: theme as BundledTheme,
         });
         
-        // Remove background-color and color from inline styles
-        // Keep other styles and syntax highlighting colors on spans
+        // Remove style attribute from pre element to let CSS control background
+        // Keep syntax highlighting colors on span elements
         const processedHtml = html
-          .replace(/style="[^"]*background-color:[^"]*"/g, '')
+          .replace(/<pre([^>]*)style="[^"]*"([^>]*)>/g, '<pre$1$2>')
           .replace(/class="shiki[^"]*"/g, 'class="shiki-code"');
         
         if (!cancelled) {
