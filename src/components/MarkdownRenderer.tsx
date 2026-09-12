@@ -68,7 +68,12 @@ const CodeBlock = memo(function CodeBlock({ className, children }: {
   const [isDarkMode, setIsDarkMode] = useState(() => {
     // Initialize with current dark mode state
     if (typeof document !== 'undefined') {
-      return document.documentElement.classList.contains('dark');
+      // Check both class-based and media query-based dark mode
+      const hasDarkClass = document.documentElement.classList.contains('dark');
+      const prefersDark = typeof window !== 'undefined' && window.matchMedia 
+        ? window.matchMedia('(prefers-color-scheme: dark)').matches 
+        : false;
+      return hasDarkClass || prefersDark;
     }
     return false;
   });
@@ -77,17 +82,32 @@ const CodeBlock = memo(function CodeBlock({ className, children }: {
   useEffect(() => {
     // Check if dark mode is enabled
     const checkDarkMode = () => {
-      setIsDarkMode(document.documentElement.classList.contains('dark'));
+      const hasDarkClass = document.documentElement.classList.contains('dark');
+      const prefersDark = typeof window !== 'undefined' && window.matchMedia 
+        ? window.matchMedia('(prefers-color-scheme: dark)').matches 
+        : false;
+      setIsDarkMode(hasDarkClass || prefersDark);
     };
     
     checkDarkMode();
     
-    // Listen for theme changes
+    // Listen for class changes
     const observer = new MutationObserver(checkDarkMode);
     observer.observe(document.documentElement, {
       attributes: true,
       attributeFilter: ['class'],
     });
+    
+    // Listen for media query changes
+    if (typeof window !== 'undefined' && window.matchMedia) {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      mediaQuery.addEventListener('change', checkDarkMode);
+      
+      return () => {
+        observer.disconnect();
+        mediaQuery.removeEventListener('change', checkDarkMode);
+      };
+    }
     
     return () => observer.disconnect();
   }, []);
