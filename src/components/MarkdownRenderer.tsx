@@ -4,6 +4,7 @@ import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import { createHighlighter, type BundledLanguage, type BundledTheme } from 'shiki';
+import { Link } from 'react-router-dom';
 
 type ShikiHighlighter = Awaited<ReturnType<typeof createHighlighter>>;
 
@@ -268,6 +269,33 @@ const MarkdownRenderer = memo(function MarkdownRenderer({ content }: MarkdownRen
             const text = extractTextContent(children);
             const id = generateHeadingId(text);
             return <h3 id={id} data-toc-id={id} {...props}>{children}</h3>;
+          },
+          a({ href, children, ...props }) {
+            // Handle Notion links
+            if (href) {
+              // Convert Notion links to internal routes
+              // https://app.notion.com/p/{pageId} -> /page/{pageId}
+              // https://www.notion.so/{workspace}/{pageId} -> /page/{pageId}
+              const notionLinkMatch = href.match(/(?:https?:\/\/)?(?:app\.notion\.com\/p|www\.notion\.so\/[^/]+)\/([a-f0-9]{32})/i);
+              if (notionLinkMatch) {
+                const pageId = notionLinkMatch[1];
+                return <Link to={`/page/${pageId}`} {...props}>{children}</Link>;
+              }
+              
+              // Handle relative Notion page IDs (without dashes)
+              const notionPageIdMatch = href.match(/^([a-f0-9]{32})$/i);
+              if (notionPageIdMatch) {
+                const pageId = notionPageIdMatch[1];
+                return <Link to={`/page/${pageId}`} {...props}>{children}</Link>;
+              }
+            }
+            
+            // External links open in new tab
+            return (
+              <a href={href} target="_blank" rel="noopener noreferrer" {...props}>
+                {children}
+              </a>
+            );
           },
         }}
       >

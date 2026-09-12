@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { render, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import MarkdownRenderer from './MarkdownRenderer';
 
 describe('MarkdownRenderer - Code Blocks', () => {
@@ -212,5 +213,61 @@ describe('MarkdownRenderer - Images', () => {
     expect(img).not.toBeNull();
     expect(img?.getAttribute('src')).toBe('https://example.com/image.png');
     expect(img?.getAttribute('alt')).toBe('Alt text');
+  });
+});
+
+describe('MarkdownRenderer - Notion Links', () => {
+  it('should convert app.notion.com links to internal routes', () => {
+    const markdown = '[Link](https://app.notion.com/p/1234567890abcdef1234567890abcdef)';
+    render(
+      <MemoryRouter>
+        <MarkdownRenderer content={markdown} />
+      </MemoryRouter>
+    );
+    
+    const link = document.querySelector('a');
+    expect(link).not.toBeNull();
+    expect(link?.getAttribute('href')).toBe('/page/1234567890abcdef1234567890abcdef');
+  });
+
+  it('should convert www.notion.so links to internal routes', () => {
+    const markdown = '[Link](https://www.notion.so/workspace/1234567890abcdef1234567890abcdef)';
+    render(
+      <MemoryRouter>
+        <MarkdownRenderer content={markdown} />
+      </MemoryRouter>
+    );
+    
+    const link = document.querySelector('a');
+    expect(link).not.toBeNull();
+    expect(link?.getAttribute('href')).toBe('/page/1234567890abcdef1234567890abcdef');
+  });
+
+  it('should convert relative Notion page IDs to internal routes', () => {
+    const markdown = '[Link](1234567890abcdef1234567890abcdef)';
+    render(
+      <MemoryRouter>
+        <MarkdownRenderer content={markdown} />
+      </MemoryRouter>
+    );
+    
+    const link = document.querySelector('a');
+    expect(link).not.toBeNull();
+    expect(link?.getAttribute('href')).toBe('/page/1234567890abcdef1234567890abcdef');
+  });
+
+  it('should open external links in new tab', () => {
+    const markdown = '[Link](https://example.com)';
+    render(
+      <MemoryRouter>
+        <MarkdownRenderer content={markdown} />
+      </MemoryRouter>
+    );
+    
+    const link = document.querySelector('a');
+    expect(link).not.toBeNull();
+    expect(link?.getAttribute('href')).toBe('https://example.com');
+    expect(link?.getAttribute('target')).toBe('_blank');
+    expect(link?.getAttribute('rel')).toBe('noopener noreferrer');
   });
 });
