@@ -97,36 +97,32 @@ const TableOfContents = memo(function TableOfContents({ content, onLoadMore, has
 
   // Recalculate activeId when content changes (e.g., when new pages are loaded)
   useEffect(() => {
-    // Wait for DOM to update after content change
-    const timer = setTimeout(() => {
-      const headingElements = Array.from(document.querySelectorAll('h1[data-toc-id], h2[data-toc-id], h3[data-toc-id]'));
-      if (headingElements.length === 0) return;
+    // Immediately recalculate activeId based on current scroll position
+    const headingElements = Array.from(document.querySelectorAll('h1[data-toc-id], h2[data-toc-id], h3[data-toc-id]'));
+    if (headingElements.length === 0) return;
 
-      const scrollTop = window.scrollY || document.documentElement.scrollTop;
-      const headerOffset = 120;
+    const scrollTop = window.scrollY || document.documentElement.scrollTop;
+    const headerOffset = 120;
 
-      let currentId = '';
-      for (const heading of headingElements) {
-        const rect = heading.getBoundingClientRect();
-        const headingTop = rect.top + scrollTop;
-        
-        if (headingTop <= scrollTop + headerOffset) {
-          currentId = heading.getAttribute('data-toc-id') || '';
-        } else {
-          break;
-        }
+    let currentId = '';
+    for (const heading of headingElements) {
+      const rect = heading.getBoundingClientRect();
+      const headingTop = rect.top + scrollTop;
+      
+      if (headingTop <= scrollTop + headerOffset) {
+        currentId = heading.getAttribute('data-toc-id') || '';
+      } else {
+        break;
       }
+    }
 
-      if (!currentId && headingElements.length > 0) {
-        currentId = headingElements[0].getAttribute('data-toc-id') || '';
-      }
+    if (!currentId && headingElements.length > 0) {
+      currentId = headingElements[0].getAttribute('data-toc-id') || '';
+    }
 
-      if (currentId) {
-        setActiveId(currentId);
-      }
-    }, 0);
-
-    return () => clearTimeout(timer);
+    if (currentId && currentId !== activeId) {
+      setActiveId(currentId);
+    }
   }, [content]); // Run when content changes
 
   // Auto-scroll TOC to show active heading
