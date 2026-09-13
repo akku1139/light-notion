@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Edit, Clock, ExternalLink, Loader2 } from 'lucide-react';
-import { getPage, getBlocks, getPageTitle, type NotionPage, type NotionBlock } from '../lib/notion';
+import { ArrowLeft, Edit, Clock, ExternalLink, Loader2, FolderOpen } from 'lucide-react';
+import { getPage, getBlocks, getPageTitle, getChildPages, type NotionPage, type NotionBlock } from '../lib/notion';
 import { blocksToMarkdown } from '../lib/markdown';
 import MarkdownRenderer from '../components/MarkdownRenderer';
 import TableOfContents from '../components/TableOfContents';
@@ -16,6 +16,7 @@ export default function PageView() {
   const [error, setError] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [childPageCount, setChildPageCount] = useState(0);
   const observerRef = useRef<HTMLDivElement>(null);
   const loadingMoreRef = useRef(false);
   const hasMoreRef = useRef(false);
@@ -83,9 +84,10 @@ export default function PageView() {
       setLoading(true);
       setError(null);
       try {
-        const [pageData, blocksData] = await Promise.all([
+        const [pageData, blocksData, childPages] = await Promise.all([
           getPage(id),
           getBlocks(id),
+          getChildPages(id),
         ]);
         setPage(pageData);
         setBlocks(blocksData.results);
@@ -93,6 +95,7 @@ export default function PageView() {
         setMarkdown(markdownText);
         setHasMore(blocksData.has_more);
         setNextCursor(blocksData.next_cursor);
+        setChildPageCount(childPages.length);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load page');
       } finally {
@@ -159,6 +162,15 @@ export default function PageView() {
           <ArrowLeft size={16} /> Back to list
         </Link>
         <div className="flex items-center gap-2">
+          {childPageCount > 0 && (
+            <Link
+              to={`/pages/${page.id}`}
+              className="flex items-center gap-1 px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              title={`View ${childPageCount} child page${childPageCount !== 1 ? 's' : ''}`}
+            >
+              <FolderOpen size={14} /> {childPageCount}
+            </Link>
+          )}
           <a
             href={page.url}
             target="_blank"

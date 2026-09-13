@@ -4,6 +4,7 @@ import HomePage from './pages/Home';
 import PageList from './pages/PageList';
 import PageView from './pages/PageView';
 import PageEdit from './pages/PageEdit';
+import ChildPages from './pages/ChildPages';
 import SearchPage from './pages/Search';
 import Settings from './pages/Settings';
 
@@ -14,6 +15,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/pages" element={<PageList />} />
+          <Route path="/pages/:id" element={<ChildPages />} />
           <Route path="/page/:id" element={<PageView />} />
           <Route path="/edit/:id" element={<PageEdit />} />
           <Route path="/search" element={<SearchPage />} />
