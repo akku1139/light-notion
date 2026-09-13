@@ -152,6 +152,23 @@ const TableOfContents = memo(function TableOfContents({ content, onLoadMore, has
     }
   };
 
+  // Auto-load more pages if TOC doesn't need scrolling
+  useEffect(() => {
+    const checkAndLoadMore = async () => {
+      if (!tocRef.current || !hasMore || !onLoadMore) return;
+
+      const { scrollHeight, clientHeight } = tocRef.current;
+      
+      // If TOC doesn't need scrolling (content fits in viewport), load more
+      if (scrollHeight <= clientHeight) {
+        await onLoadMore();
+      }
+    };
+
+    // Check on mount and when headings change
+    checkAndLoadMore();
+  }, [headings.length, hasMore, onLoadMore]);
+
   if (headings.length === 0) {
     return null;
   }
