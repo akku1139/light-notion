@@ -49,6 +49,11 @@ html.dark .shiki-container pre.shiki-code {
   background-color: rgb(17 24 39);
 }
 
+/* Table header styles for dark mode */
+html.dark table th {
+  background-color: rgb(31 41 55) !important;
+}
+
 .shiki-container code {
   background: transparent;
   padding: 0;
