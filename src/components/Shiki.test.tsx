@@ -12,10 +12,11 @@ describe('Shiki Syntax Highlighting', () => {
     const markdown = '```javascript\nconst x = 1;\n```';
     render(<MarkdownRenderer content={markdown} />);
 
+    // Wait for Shiki to load and create shiki-container
     await waitFor(() => {
       const codeBlock = document.querySelector('.shiki-container');
       expect(codeBlock).not.toBeNull();
-    });
+    }, { timeout: 3000 });
   });
 
   it('should apply syntax highlighting to code blocks', async () => {

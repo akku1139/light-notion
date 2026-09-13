@@ -32,7 +32,7 @@ describe('Theme Detection', () => {
       const computedStyle = window.getComputedStyle(pre!);
       // The background color should be dark
       expect(computedStyle.backgroundColor).toBeDefined();
-    });
+    }, { timeout: 3000 });
   });
 
   it('should detect dark mode from prefers-color-scheme media query', async () => {

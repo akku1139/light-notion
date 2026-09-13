@@ -12,44 +12,41 @@ interface TableOfContentsProps {
   hasMore?: boolean;
 }
 
-// Extract headings from markdown content - pure function, no side effects
-function extractHeadings(content: string): TocItem[] {
-  const headingRegex = /^(#{1,3})\s+(.+)$/gm;
-  const items: TocItem[] = [];
-  const idCounts: Record<string, number> = {};
-  let match;
-
-  while ((match = headingRegex.exec(content)) !== null) {
-    const level = match[1].length;
-    const text = match[2].trim();
-    let id = text
-      .toLowerCase()
-      .replace(/[^\w\s-]/g, '')
-      .replace(/\s+/g, '-')
-      .replace(/-+/g, '-')
-      .trim();
-    
-    if (!id) {
-      id = 'heading';
-    }
-    
-    if (idCounts[id] !== undefined) {
-      idCounts[id]++;
-      id = `${id}-${idCounts[id]}`;
-    } else {
-      idCounts[id] = 0;
-    }
-    
-    items.push({ id, text, level });
-  }
-
-  return items;
-}
-
 const TableOfContents = memo(function TableOfContents({ content, onLoadMore, hasMore }: TableOfContentsProps) {
-  const headings = extractHeadings(content);
+  const [headings, setHeadings] = useState<TocItem[]>([]);
   const [activeId, setActiveId] = useState<string>('');
   const tocRef = useRef<HTMLElement>(null);
+
+  // Extract headings from DOM - DOM is the source of truth
+  useEffect(() => {
+    const updateHeadings = () => {
+      const headingElements = Array.from(document.querySelectorAll('h1[data-toc-id], h2[data-toc-id], h3[data-toc-id]'));
+      const newHeadings = headingElements.map((heading) => {
+        const id = heading.getAttribute('data-toc-id') || '';
+        const text = heading.textContent || '';
+        const level = parseInt(heading.tagName.charAt(1));
+        return { id, text, level };
+      });
+      setHeadings(newHeadings);
+    };
+
+    // Initial extraction
+    updateHeadings();
+
+    // Watch for DOM changes (new headings added via infinite scroll)
+    const observer = new MutationObserver(() => {
+      updateHeadings();
+    });
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+    });
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []); // Run once on mount
 
   // Sync active heading with DOM headings on scroll
   useEffect(() => {
@@ -94,36 +91,6 @@ const TableOfContents = memo(function TableOfContents({ content, onLoadMore, has
       window.removeEventListener('scroll', handleScroll);
     };
   }, []); // Empty dependency - only run once
-
-  // Recalculate activeId when content changes (e.g., when new pages are loaded)
-  useEffect(() => {
-    // Immediately recalculate activeId based on current scroll position
-    const headingElements = Array.from(document.querySelectorAll('h1[data-toc-id], h2[data-toc-id], h3[data-toc-id]'));
-    if (headingElements.length === 0) return;
-
-    const scrollTop = window.scrollY || document.documentElement.scrollTop;
-    const headerOffset = 120;
-
-    let currentId = '';
-    for (const heading of headingElements) {
-      const rect = heading.getBoundingClientRect();
-      const headingTop = rect.top + scrollTop;
-      
-      if (headingTop <= scrollTop + headerOffset) {
-        currentId = heading.getAttribute('data-toc-id') || '';
-      } else {
-        break;
-      }
-    }
-
-    if (!currentId && headingElements.length > 0) {
-      currentId = headingElements[0].getAttribute('data-toc-id') || '';
-    }
-
-    if (currentId && currentId !== activeId) {
-      setActiveId(currentId);
-    }
-  }, [content]); // Run when content changes
 
   // Auto-scroll TOC to show active heading
   useEffect(() => {
@@ -246,4 +213,3 @@ const TableOfContents = memo(function TableOfContents({ content, onLoadMore, has
 });
 
 export default TableOfContents;
-export { extractHeadings };

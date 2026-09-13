@@ -1,9 +1,21 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, waitFor } from '@testing-library/react';
 import TableOfContents from './TableOfContents';
 
 describe('TableOfContents', () => {
-  it('should render headings from content', () => {
+  beforeEach(() => {
+    // Clear DOM before each test
+    document.body.innerHTML = '';
+  });
+
+  it('should render headings from DOM', () => {
+    // Add headings to DOM
+    document.body.innerHTML = `
+      <h1 data-toc-id="heading-1">Heading 1</h1>
+      <h2 data-toc-id="heading-2">Heading 2</h2>
+      <h3 data-toc-id="heading-3">Heading 3</h3>
+    `;
+
     const content = '# Heading 1\n\n## Heading 2\n\n### Heading 3';
     render(<TableOfContents content={content} />);
     
@@ -16,6 +28,13 @@ describe('TableOfContents', () => {
   });
 
   it('should handle duplicate headings', () => {
+    // Add headings to DOM with unique IDs
+    document.body.innerHTML = `
+      <h1 data-toc-id="title">Title</h1>
+      <h2 data-toc-id="title-1">Title</h2>
+      <h2 data-toc-id="title-2">Title</h2>
+    `;
+
     const content = '# Title\n\n## Title\n\n## Title';
     render(<TableOfContents content={content} />);
     
@@ -30,6 +49,13 @@ describe('TableOfContents', () => {
   });
 
   it('should apply correct indentation based on heading level', () => {
+    // Add headings to DOM
+    document.body.innerHTML = `
+      <h1 data-toc-id="h1">H1</h1>
+      <h2 data-toc-id="h2">H2</h2>
+      <h3 data-toc-id="h3">H3</h3>
+    `;
+
     const content = '# H1\n\n## H2\n\n### H3';
     render(<TableOfContents content={content} />);
     
@@ -43,6 +69,9 @@ describe('TableOfContents', () => {
   });
 
   it('should not render when content has no headings', () => {
+    // No headings in DOM
+    document.body.innerHTML = '';
+    
     const content = 'This is just plain text without headings';
     const { container } = render(<TableOfContents content={content} />);
     
@@ -51,6 +80,12 @@ describe('TableOfContents', () => {
   });
 
   it('should call onLoadMore when scrolled to bottom', () => {
+    // Add headings to DOM
+    document.body.innerHTML = `
+      <h1 data-toc-id="heading-1">Heading 1</h1>
+      <h2 data-toc-id="heading-2">Heading 2</h2>
+    `;
+
     const onLoadMore = vi.fn();
     const content = '# Heading 1\n\n## Heading 2';
     
@@ -78,6 +113,13 @@ describe('TableOfContents', () => {
   });
 
   it('should render links for all headings', () => {
+    // Add headings to DOM
+    document.body.innerHTML = `
+      <h1 data-toc-id="first-heading">First Heading</h1>
+      <h2 data-toc-id="second-heading">Second Heading</h2>
+      <h3 data-toc-id="third-heading">Third Heading</h3>
+    `;
+
     const content = '# First Heading\n\n## Second Heading\n\n### Third Heading';
     
     const { container } = render(<TableOfContents content={content} />);
@@ -90,19 +132,33 @@ describe('TableOfContents', () => {
     expect(links[2].textContent).toBe('Third Heading');
   });
 
-  it('should update links when content changes', () => {
+  it('should update links when content changes', async () => {
+    // Add initial heading to DOM
+    document.body.innerHTML = `
+      <h1 data-toc-id="first-heading">First Heading</h1>
+    `;
+
     const initialContent = '# First Heading';
     const { container, rerender } = render(<TableOfContents content={initialContent} />);
     
     let links = container.querySelectorAll('a');
     expect(links.length).toBe(1);
     
+    // Update DOM with new heading
+    document.body.innerHTML = `
+      <h1 data-toc-id="first-heading">First Heading</h1>
+      <h2 data-toc-id="second-heading">Second Heading</h2>
+    `;
+
     // Update content with new heading
     const newContent = '# First Heading\n\n## Second Heading';
     rerender(<TableOfContents content={newContent} />);
     
-    links = container.querySelectorAll('a');
-    expect(links.length).toBe(2);
+    // Wait for MutationObserver to update headings
+    await waitFor(() => {
+      links = container.querySelectorAll('a');
+      expect(links.length).toBe(2);
+    });
   });
 
   it('should set first heading as active on initial render', () => {
