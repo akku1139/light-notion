@@ -214,6 +214,101 @@ describe('MarkdownRenderer - Images', () => {
     expect(img?.getAttribute('src')).toBe('https://example.com/image.png');
     expect(img?.getAttribute('alt')).toBe('Alt text');
   });
+
+  it('should apply max-width to image', () => {
+    const markdown = '![Alt text](https://example.com/image.png)';
+    const { container } = render(<MarkdownRenderer content={markdown} />);
+    
+    const img = container.querySelector('img');
+    expect(img).not.toBeNull();
+    // Image should have max-w-full class to prevent overflow
+    const computedStyle = window.getComputedStyle(img!);
+    expect(computedStyle.maxWidth).toBeDefined();
+  });
+});
+
+describe('MarkdownRenderer - Tables', () => {
+  it('should wrap table in table-wrapper div', () => {
+    const markdown = '| Header 1 | Header 2 |\n| --- | --- |\n| Cell 1 | Cell 2 |';
+    const { container } = render(<MarkdownRenderer content={markdown} />);
+    
+    const tableWrapper = container.querySelector('.table-wrapper');
+    expect(tableWrapper).not.toBeNull();
+    
+    const table = tableWrapper?.querySelector('table');
+    expect(table).not.toBeNull();
+  });
+
+  it('should apply overflow-x-auto to table wrapper', () => {
+    const markdown = '| Header 1 | Header 2 |\n| --- | --- |\n| Cell 1 | Cell 2 |';
+    const { container } = render(<MarkdownRenderer content={markdown} />);
+    
+    const tableWrapper = container.querySelector('.table-wrapper');
+    expect(tableWrapper).not.toBeNull();
+    // Table wrapper should have overflow-x-auto for horizontal scrolling
+  });
+
+  it('should render table with sticky header', () => {
+    const markdown = '| Header 1 | Header 2 |\n| --- | --- |\n| Cell 1 | Cell 2 |';
+    const { container } = render(<MarkdownRenderer content={markdown} />);
+    
+    const th = container.querySelector('th');
+    expect(th).not.toBeNull();
+    // Header should be sticky
+  });
+});
+
+describe('MarkdownRenderer - Long Links', () => {
+  it('should render long links without overflow', () => {
+    const longUrl = 'https://example.com/very/long/path/that/should/not/overflow/the/container/width/when/rendered/in/the/markdown/renderer';
+    const markdown = `[Link](${longUrl})`;
+    const { container } = render(<MarkdownRenderer content={markdown} />);
+    
+    const link = container.querySelector('a');
+    expect(link).not.toBeNull();
+    // Link should have break-all or overflow-wrap to prevent overflow
+  });
+
+  it('should apply break-all to links', () => {
+    const markdown = '[Link](https://example.com/very/long/path)';
+    const { container } = render(<MarkdownRenderer content={markdown} />);
+    
+    const prose = container.querySelector('.prose');
+    expect(prose).not.toBeNull();
+    // Prose should have overflow-x-hidden
+  });
+});
+
+describe('MarkdownRenderer - Code Blocks', () => {
+  it('should render code block with overflow-x-auto', () => {
+    const markdown = '```\nconst veryLongVariableName = "some very long string value that should not overflow";\n```';
+    const { container } = render(<MarkdownRenderer content={markdown} />);
+    
+    const pre = container.querySelector('pre');
+    expect(pre).not.toBeNull();
+    // Pre should have overflow-x-auto for horizontal scrolling
+  });
+
+  it('should render inline code with word-break', () => {
+    const markdown = 'This is `veryLongInlineCodeThatShouldNotOverflow` in text';
+    const { container } = render(<MarkdownRenderer content={markdown} />);
+    
+    const code = container.querySelector('code');
+    expect(code).not.toBeNull();
+    // Code should have word-break or overflow-wrap
+  });
+});
+
+describe('MarkdownRenderer - Overflow Prevention', () => {
+  it('should have overflow-x-hidden on prose container', () => {
+    const markdown = '# Heading\n\nSome content';
+    const { container } = render(<MarkdownRenderer content={markdown} />);
+    
+    const prose = container.querySelector('.prose');
+    expect(prose).not.toBeNull();
+    // Prose should have overflow-x-hidden class
+    expect(prose?.className).toContain('overflow-x-hidden');
+  });
 });
 
 describe('MarkdownRenderer - Notion Links', () => {

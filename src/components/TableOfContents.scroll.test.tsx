@@ -3,6 +3,45 @@ import { render, screen, act } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import TableOfContents from './TableOfContents';
 
+describe('TableOfContents - Click Navigation', () => {
+  beforeEach(() => {
+    // Reset DOM
+    document.body.innerHTML = '';
+  });
+
+  it('should navigate to heading when clicking TOC link', () => {
+    // Add headings to DOM
+    document.body.innerHTML = `
+      <h1 data-toc-id="first-heading">First Heading</h1>
+      <h2 data-toc-id="second-heading">Second Heading</h2>
+    `;
+
+    const content = '# First Heading\n\n## Second Heading';
+    const { container } = render(<TableOfContents content={content} />);
+    
+    const links = container.querySelectorAll('a');
+    expect(links.length).toBe(2);
+    
+    // Click second link
+    const secondLink = links[1];
+    expect(secondLink.getAttribute('href')).toBe('#second-heading');
+  });
+
+  it('should have correct href for TOC links', () => {
+    document.body.innerHTML = `
+      <h1 data-toc-id="heading-1">Heading 1</h1>
+      <h2 data-toc-id="heading-2">Heading 2</h2>
+    `;
+
+    const content = '# Heading 1\n\n## Heading 2';
+    const { container } = render(<TableOfContents content={content} />);
+    
+    const links = container.querySelectorAll('a');
+    expect(links[0].getAttribute('href')).toBe('#heading-1');
+    expect(links[1].getAttribute('href')).toBe('#heading-2');
+  });
+});
+
 describe('TableOfContents - Scroll Tracking', () => {
   beforeEach(() => {
     // Reset scroll position

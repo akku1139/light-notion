@@ -213,4 +213,34 @@ describe('resolveReferenceLinks', () => {
     
     expect(resolved).toBe(text);
   });
+
+  it('should handle Notion format [[1]](1)', () => {
+    const text = 'See [[1]](1) for details\n\n[[1]](1): [Title](https://example.com)';
+    const resolved = resolveReferenceLinks(text);
+    
+    expect(resolved).toContain('[1](https://example.com)');
+    expect(resolved).not.toContain('[[1]]');
+  });
+
+  it('should handle reference with title in URL format', () => {
+    const text = 'See [1]\n\n[1]: title: https://example.com';
+    const resolved = resolveReferenceLinks(text);
+    
+    expect(resolved).toContain('[1](https://example.com)');
+  });
+
+  it('should handle empty text', () => {
+    const text = '';
+    const resolved = resolveReferenceLinks(text);
+    
+    expect(resolved).toBe('');
+  });
+
+  it('should preserve existing inline links', () => {
+    const text = 'Click [here](https://example.com) and see [1]\n\n[1]: https://other.com';
+    const resolved = resolveReferenceLinks(text);
+    
+    expect(resolved).toContain('[here](https://example.com)');
+    expect(resolved).toContain('[1](https://other.com)');
+  });
 });
