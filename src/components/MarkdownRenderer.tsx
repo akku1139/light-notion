@@ -227,7 +227,7 @@ const MarkdownRenderer = memo(function MarkdownRenderer({ content }: MarkdownRen
       prose-h2:text-2xl prose-h2:mb-3 prose-h2:mt-6
       prose-h3:text-xl prose-h3:mb-2 prose-h3:mt-4
       prose-p:leading-7 prose-p:mb-4
-      prose-a:text-blue-600 dark:prose-a:text-blue-400 prose-a:no-underline hover:prose-a:underline prose-a:break-all
+      prose-a:text-blue-600 dark:prose-a:text-blue-400 prose-a:no-underline prose-a:hover:underline prose-a:break-all
       prose-blockquote:border-l-4 prose-blockquote:border-blue-500 prose-blockquote:pl-4 prose-blockquote:italic
       prose-img:rounded-lg prose-img:shadow-md prose-img:max-w-full
       prose-li:leading-7
