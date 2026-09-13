@@ -96,7 +96,11 @@ export default function ChildPages() {
               >
                 <div className="flex items-start gap-3">
                   <div className="flex-shrink-0 mt-0.5">
-                    <FileText size={24} className="text-gray-400" />
+                    {page.icon && page.icon.type === 'emoji' ? (
+                      <span className="text-2xl">{page.icon.emoji}</span>
+                    ) : (
+                      <FileText size={24} className="text-gray-400" />
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-semibold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors truncate">

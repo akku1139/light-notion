@@ -88,6 +88,9 @@ export async function getChildPages(pageId: string): Promise<NotionPage[]> {
       const childPageData = block.child_page as { title?: string } | undefined;
       const title = childPageData?.title || 'Untitled';
       
+      // Extract icon from block
+      const icon = (block as any).icon || null;
+      
       // Create a minimal page object
       return {
         id: block.id,
@@ -98,7 +101,7 @@ export async function getChildPages(pageId: string): Promise<NotionPage[]> {
         archived: false,
         url: `https://notion.so/${block.id.replace(/-/g, '')}`,
         public_url: null,
-        icon: null,
+        icon: icon,
         cover: null,
         properties: {
           title: {
