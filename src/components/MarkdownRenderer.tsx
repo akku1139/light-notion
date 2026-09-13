@@ -221,22 +221,22 @@ const MarkdownRenderer = memo(function MarkdownRenderer({ content }: MarkdownRen
   };
 
   return (
-    <div className="prose prose-gray dark:prose-invert max-w-none
+      <div className="prose prose-gray dark:prose-invert max-w-none overflow-x-hidden
       prose-headings:font-bold prose-headings:tracking-tight
       prose-h1:text-3xl prose-h1:mb-4 prose-h1:mt-8
       prose-h2:text-2xl prose-h2:mb-3 prose-h2:mt-6
       prose-h3:text-xl prose-h3:mb-2 prose-h3:mt-4
       prose-p:leading-7 prose-p:mb-4
-      prose-a:text-blue-600 dark:prose-a:text-blue-400 prose-a:no-underline hover:prose-a:underline
+      prose-a:text-blue-600 dark:prose-a:text-blue-400 prose-a:no-underline hover:prose-a:underline prose-a:break-all
       prose-blockquote:border-l-4 prose-blockquote:border-blue-500 prose-blockquote:pl-4 prose-blockquote:italic
-      prose-img:rounded-lg prose-img:shadow-md
+      prose-img:rounded-lg prose-img:shadow-md prose-img:max-w-full
       prose-li:leading-7
       prose-table:border-collapse
-      [&_table]:w-full [&_table]:border [&_th]:border [&_th]:px-3 [&_th]:py-2 [&_th]:bg-gray-100 dark:[&_th]:bg-gray-800 [&_td]:border [&_td]:px-3 [&_td]:py-2
+      [&_.table-wrapper]:overflow-x-auto [&_.table-wrapper]:my-4
+      [&_table]:w-full [&_table]:border [&_th]:border [&_th]:px-3 [&_th]:py-2 [&_th]:bg-gray-100 dark:[&_th]:bg-gray-800 [&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_td]:border [&_td]:px-3 [&_td]:py-2
       [&_.katex-display]:my-4 [&_.katex-display]:overflow-x-auto [&_.katex-display]:overflow-y-hidden
       prose-code:text-sm prose-code:font-mono
-      prose-code:before:content-none prose-code:after:content-none">
-      <ReactMarkdown
+      prose-code:before:content-none prose-code:after:content-none">      <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkMath]}
         rehypePlugins={[rehypeKatex]}
         components={{
@@ -269,6 +269,13 @@ const MarkdownRenderer = memo(function MarkdownRenderer({ content }: MarkdownRen
             const text = extractTextContent(children);
             const id = generateHeadingId(text);
             return <h3 id={id} data-toc-id={id} {...props}>{children}</h3>;
+          },
+          table({ children, ...props }) {
+            return (
+              <div className="table-wrapper">
+                <table {...props}>{children}</table>
+              </div>
+            );
           },
           a({ href, children, ...props }) {
             // Handle Notion links

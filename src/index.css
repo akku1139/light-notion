@@ -107,3 +107,59 @@ html.dark .prose pre {
   font-size: 0.875rem;
   line-height: 1.6;
 }
+
+/* Table styles with sticky header and horizontal scroll */
+.table-wrapper {
+  overflow-x: auto;
+  margin: 1rem 0;
+  border-radius: 0.5rem;
+  border: 1px solid rgb(229 231 235);
+}
+
+.dark .table-wrapper {
+  border-color: rgb(55 65 81);
+}
+
+.table-wrapper table {
+  margin: 0;
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.table-wrapper th {
+  position: sticky;
+  top: 0;
+  background-color: rgb(243 244 246);
+  z-index: 10;
+  font-weight: 600;
+}
+
+.dark .table-wrapper th {
+  background-color: rgb(31 41 55);
+}
+
+.table-wrapper th,
+.table-wrapper td {
+  padding: 0.75rem;
+  border: 1px solid rgb(229 231 235);
+}
+
+.dark .table-wrapper th,
+.dark .table-wrapper td {
+  border-color: rgb(55 65 81);
+}
+
+/* Prevent long links and code from overflowing */
+.prose {
+  overflow-x: hidden;
+}
+
+.prose a {
+  word-break: break-all;
+  overflow-wrap: break-word;
+}
+
+.prose code {
+  word-break: break-all;
+  overflow-wrap: break-word;
+}
