@@ -15,6 +15,7 @@ interface TableOfContentsProps {
 const TableOfContents = memo(function TableOfContents({ content, onLoadMore, hasMore }: TableOfContentsProps) {
   const [headings, setHeadings] = useState<TocItem[]>([]);
   const [activeId, setActiveId] = useState<string>('');
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const tocRef = useRef<HTMLElement>(null);
 
   // Extract headings from DOM - DOM is the source of truth
@@ -51,6 +52,9 @@ const TableOfContents = memo(function TableOfContents({ content, onLoadMore, has
   // Sync active heading with DOM headings on scroll
   useEffect(() => {
     const handleScroll = () => {
+      // Skip updates during content loading to prevent flickering
+      if (isLoading) return;
+
       // Find all heading elements in the main content
       const headingElements = Array.from(document.querySelectorAll('h1[data-toc-id], h2[data-toc-id], h3[data-toc-id]'));
       if (headingElements.length === 0) return;
@@ -90,7 +94,7 @@ const TableOfContents = memo(function TableOfContents({ content, onLoadMore, has
     return () => {
       window.removeEventListener('scroll', handleScroll);
     };
-  }, []); // Empty dependency - only run once
+  }, [isLoading]); // Re-run when isLoading changes
 
   // Auto-scroll TOC to show active heading
   useEffect(() => {
@@ -126,16 +130,21 @@ const TableOfContents = memo(function TableOfContents({ content, onLoadMore, has
     
     // If element doesn't exist and we have more content to load, keep loading
     if (!element && hasMore && onLoadMore) {
-      let attempts = 0;
-      const maxAttempts = 10;
-      
-      while (!element && hasMore && attempts < maxAttempts) {
-        const hasMoreAfterLoad = await onLoadMore();
-        await new Promise(resolve => setTimeout(resolve, 100));
-        element = document.querySelector(`[data-toc-id="${id}"]`) as HTMLElement | null;
-        attempts++;
+      setIsLoading(true);
+      try {
+        let attempts = 0;
+        const maxAttempts = 10;
         
-        if (!hasMoreAfterLoad) break;
+        while (!element && hasMore && attempts < maxAttempts) {
+          const hasMoreAfterLoad = await onLoadMore();
+          await new Promise(resolve => setTimeout(resolve, 100));
+          element = document.querySelector(`[data-toc-id="${id}"]`) as HTMLElement | null;
+          attempts++;
+          
+          if (!hasMoreAfterLoad) break;
+        }
+      } finally {
+        setIsLoading(false);
       }
     }
     
@@ -145,10 +154,15 @@ const TableOfContents = memo(function TableOfContents({ content, onLoadMore, has
     }
   };
 
-  const handleTocScroll = (e: React.UIEvent<HTMLElement>) => {
+  const handleTocScroll = async (e: React.UIEvent<HTMLElement>) => {
     const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
-    if (scrollHeight - scrollTop - clientHeight < 50 && hasMore && onLoadMore) {
-      onLoadMore();
+    if (scrollHeight - scrollTop - clientHeight < 50 && hasMore && onLoadMore && !isLoading) {
+      setIsLoading(true);
+      try {
+        await onLoadMore();
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -161,7 +175,12 @@ const TableOfContents = memo(function TableOfContents({ content, onLoadMore, has
       
       // If TOC doesn't need scrolling (content fits in viewport), load more
       if (scrollHeight <= clientHeight) {
-        await onLoadMore();
+        setIsLoading(true);
+        try {
+          await onLoadMore();
+        } finally {
+          setIsLoading(false);
+        }
       }
     };
 

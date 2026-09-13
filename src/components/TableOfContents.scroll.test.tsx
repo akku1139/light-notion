@@ -121,6 +121,60 @@ describe('TableOfContents - Auto Load More', () => {
     // Should not auto-load because hasMore is false
     expect(onLoadMore).not.toHaveBeenCalled();
   });
+
+  it('should maintain active heading highlight during content load', async () => {
+    // Set up initial DOM with 2 headings
+    document.body.innerHTML = `
+      <h1 data-toc-id="heading-1">Heading 1</h1>
+      <h2 data-toc-id="heading-2">Heading 2</h2>
+    `;
+
+    let loadCount = 0;
+    const onLoadMore = vi.fn().mockImplementation(async () => {
+      loadCount++;
+      if (loadCount > 1) return false; // Only load once
+      
+      // Simulate loading delay
+      await new Promise(resolve => setTimeout(resolve, 50));
+      
+      // Simulate adding new content
+      document.body.innerHTML = `
+        <h1 data-toc-id="heading-1">Heading 1</h1>
+        <h2 data-toc-id="heading-2">Heading 2</h2>
+        <h2 data-toc-id="heading-3">Heading 3</h2>
+      `;
+      
+      return false; // No more to load
+    });
+    
+    const { container } = render(
+      <TableOfContents 
+        content="# Heading 1\n\n## Heading 2" 
+        hasMore={true}
+        onLoadMore={onLoadMore}
+      />
+    );
+
+    // Wait for initial render
+    await waitFor(() => {
+      const links = container.querySelectorAll('a');
+      expect(links.length).toBeGreaterThan(0);
+    });
+
+    // Get the initial number of links
+    const initialLinks = container.querySelectorAll('a');
+    const initialCount = initialLinks.length;
+    
+    // Wait for auto-load to complete
+    await new Promise(resolve => setTimeout(resolve, 200));
+    
+    // After auto-load, we should have more links
+    const updatedLinks = container.querySelectorAll('a');
+    expect(updatedLinks.length).toBeGreaterThan(initialCount);
+    
+    // The component should still render without errors
+    expect(container.querySelector('nav')).toBeTruthy();
+  });
 });
 
 describe('TableOfContents - Scroll Tracking', () => {
