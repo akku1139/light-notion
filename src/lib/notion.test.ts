@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { getPageTitle, getPageExcerpt } from './notion';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { getPageTitle, getPageExcerpt, getChildPages, getBlocks } from './notion';
 import type { NotionPage } from './notion';
 
 describe('notion helpers', () => {
@@ -156,6 +156,112 @@ describe('notion helpers', () => {
       } as unknown as NotionPage;
 
       expect(getPageExcerpt(page)).toBe('');
+    });
+  });
+
+  describe('getChildPages', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+      // Set a mock token
+      localStorage.setItem('notion_api_token', 'test-token');
+    });
+
+    afterEach(() => {
+      localStorage.clear();
+    });
+
+    it('should extract child pages from blocks', async () => {
+      const mockBlocks = {
+        results: [
+          {
+            id: 'block-1',
+            type: 'child_page',
+            child_page: { title: 'Child Page 1' },
+            icon: { type: 'emoji', emoji: '📄' },
+            created_time: '2024-01-01T00:00:00.000Z',
+            last_edited_time: '2024-01-01T00:00:00.000Z',
+            parent: { type: 'page_id', page_id: 'parent-id' },
+          },
+          {
+            id: 'block-2',
+            type: 'paragraph',
+            paragraph: { rich_text: [] },
+            created_time: '2024-01-01T00:00:00.000Z',
+            last_edited_time: '2024-01-01T00:00:00.000Z',
+            parent: { type: 'page_id', page_id: 'parent-id' },
+          },
+          {
+            id: 'block-3',
+            type: 'child_page',
+            child_page: { title: 'Child Page 2' },
+            icon: { type: 'emoji', emoji: '📝' },
+            created_time: '2024-01-01T00:00:00.000Z',
+            last_edited_time: '2024-01-01T00:00:00.000Z',
+            parent: { type: 'page_id', page_id: 'parent-id' },
+          },
+        ],
+        has_more: false,
+        next_cursor: null,
+      } as any;
+
+      const notionModule = await import('./notion');
+      vi.spyOn(notionModule, 'getBlocks').mockResolvedValue(mockBlocks as any);
+
+      const result = await getChildPages('parent-id');
+
+      expect(result).toHaveLength(2);
+      expect(result[0].id).toBe('block-1');
+      expect((result[0].properties as any).title.title[0].plain_text).toBe('Child Page 1');
+      expect(result[0].icon).toEqual({ type: 'emoji', emoji: '📄' });
+      expect(result[1].id).toBe('block-3');
+      expect((result[1].properties as any).title.title[0].plain_text).toBe('Child Page 2');
+      expect(result[1].icon).toEqual({ type: 'emoji', emoji: '📝' });
+    });
+
+    it('should return empty array when no child pages exist', async () => {
+      const mockBlocks = {
+        results: [
+          {
+            id: 'block-1',
+            type: 'paragraph',
+            paragraph: { rich_text: [] },
+            created_time: '2024-01-01T00:00:00.000Z',
+            last_edited_time: '2024-01-01T00:00:00.000Z',
+            parent: { type: 'page_id', page_id: 'parent-id' },
+          },
+        ],
+        has_more: false,
+        next_cursor: null,
+      } as any;
+
+      const notionModule = await import('./notion');
+      vi.spyOn(notionModule, 'getBlocks').mockResolvedValue(mockBlocks as any);
+
+      const result = await getChildPages('parent-id');
+      expect(result).toHaveLength(0);
+    });
+
+    it('should handle child pages without icon', async () => {
+      const mockBlocks = {
+        results: [
+          {
+            id: 'block-1',
+            type: 'child_page',
+            child_page: { title: 'Child Page' },
+            created_time: '2024-01-01T00:00:00.000Z',
+            last_edited_time: '2024-01-01T00:00:00.000Z',
+            parent: { type: 'page_id', page_id: 'parent-id' },
+          },
+        ],
+        has_more: false,
+        next_cursor: null,
+      } as any;
+
+      vi.spyOn(await import('./notion'), 'getBlocks').mockResolvedValue(mockBlocks as any);
+
+      const result = await getChildPages('parent-id');
+      expect(result).toHaveLength(1);
+      expect(result[0].icon).toBeNull();
     });
   });
 });
