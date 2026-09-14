@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Save, Eye, Edit3, AlertCircle } from 'lucide-react';
-import { getPage, getBlocks, getPageTitle, updatePageProperties, deleteBlock, appendBlocks, type NotionPage, type NotionBlock } from '../lib/notion';
+import { getPage, getBlocks, getPageTitle, updatePageProperties, deleteBlock, appendBlocks, updatePageIcon, type NotionPage, type NotionBlock } from '../lib/notion';
 import { blocksToMarkdown, markdownToNotionBlocks } from '../lib/markdown';
+import EmojiPicker from '../components/EmojiPicker';
 
 export default function PageEdit() {
   const { id } = useParams<{ id: string }>();
@@ -17,6 +18,8 @@ export default function PageEdit() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [mode, setMode] = useState<'edit' | 'preview'>('edit');
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [updatingIcon, setUpdatingIcon] = useState(false);
 
   useEffect(() => {
     if (page) {
@@ -52,6 +55,21 @@ export default function PageEdit() {
 
     loadPage();
   }, [id]);
+
+  const handleEmojiSelect = async (emoji: string) => {
+    if (!id) return;
+    
+    setUpdatingIcon(true);
+    try {
+      const updatedPage = await updatePageIcon(id, emoji);
+      setPage(updatedPage);
+      setShowEmojiPicker(false);
+    } catch (err) {
+      console.error('Failed to update icon:', err);
+    } finally {
+      setUpdatingIcon(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!id || !page) return;
@@ -186,16 +204,41 @@ export default function PageEdit() {
         </div>
       )}
 
-      {/* Title input */}
+      {/* Title input with emoji picker */}
       <div className="mb-4">
-        <input
-          type="text"
-          value={title}
-          onChange={e => setTitle(e.target.value)}
-          placeholder="Page title"
-          className="w-full text-2xl font-bold px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800
-            focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-        />
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <button
+              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+              disabled={updatingIcon}
+              className="text-4xl hover:scale-110 transition-transform relative disabled:opacity-50"
+              title="Change emoji"
+            >
+              {page?.icon && page.icon.type === 'emoji' ? page.icon.emoji : '📄'}
+              {updatingIcon && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-full">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                </div>
+              )}
+            </button>
+            
+            {/* Emoji Picker */}
+            {showEmojiPicker && (
+              <EmojiPicker
+                onSelect={handleEmojiSelect}
+                onClose={() => setShowEmojiPicker(false)}
+              />
+            )}
+          </div>
+          <input
+            type="text"
+            value={title}
+            onChange={e => setTitle(e.target.value)}
+            placeholder="Page title"
+            className="flex-1 text-2xl font-bold px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800
+              focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+          />
+        </div>
       </div>
 
       {/* Content area */}

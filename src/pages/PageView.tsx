@@ -1,24 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Edit, Clock, ExternalLink, Loader2, FolderOpen, Smile } from 'lucide-react';
+import { ArrowLeft, Edit, Clock, ExternalLink, Loader2, FolderOpen } from 'lucide-react';
 import { getPage, getBlocks, getPageTitle, getChildPages, updatePageIcon, type NotionPage, type NotionBlock } from '../lib/notion';
 import { blocksToMarkdown } from '../lib/markdown';
 import MarkdownRenderer from '../components/MarkdownRenderer';
 import TableOfContents from '../components/TableOfContents';
-
-// よく使われる絵文字のリスト
-const COMMON_EMOJIS = [
-  '📄', '📝', '📋', '📌', '📎', '📁', '📂', '📊', '📈', '📉',
-  '✨', '⭐', '🌟', '💫', '🔥', '💡', '💭', '💬', '📢', '📣',
-  '🎯', '🎨', '🎭', '🎪', '🎫', '🎬', '🎤', '🎧', '🎵', '🎶',
-  '🚀', '🚁', '🚂', '🚗', '🚕', '🚙', '🚌', '🚎', '🏎️', '🚓',
-  '❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💔',
-  '✅', '❌', '⭕', '❗', '❓', '💯', '🔴', '🟢', '🔵', '⚫',
-  '👍', '👎', '👏', '🙌', '👋', '🤝', '🙏', '💪', '✌️', '🤞',
-  '🌈', '☀️', '🌙', '⚡', '☁️', '🌊', '🔥', '💧', '🌸', '🌺',
-  '🍎', '🍊', '🍋', '🍌', '🍉', '🍇', '🍓', '🫐', '🍈', '🍒',
-  '🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯',
-];
+import EmojiPicker from '../components/EmojiPicker';
 
 export default function PageView() {
   const { id } = useParams<{ id: string }>();
@@ -279,23 +266,10 @@ export default function PageView() {
             
             {/* Emoji Picker */}
             {showEmojiPicker && (
-              <div className="absolute top-full left-0 mt-2 p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 w-72">
-                <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">
-                  Choose an emoji
-                </div>
-                <div className="grid grid-cols-8 gap-1 max-h-48 overflow-y-auto">
-                  {COMMON_EMOJIS.map((emoji) => (
-                    <button
-                      key={emoji}
-                      onClick={() => handleEmojiSelect(emoji)}
-                      className="text-2xl hover:bg-gray-100 dark:hover:bg-gray-700 rounded p-1 transition-colors"
-                      title={emoji}
-                    >
-                      {emoji}
-                    </button>
-                  ))}
-                </div>
-              </div>
+              <EmojiPicker
+                onSelect={handleEmojiSelect}
+                onClose={() => setShowEmojiPicker(false)}
+              />
             )}
           </div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{title}</h1>
