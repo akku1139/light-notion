@@ -196,9 +196,11 @@ export default function ChildPages() {
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
           <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
         </div>
-        <Link to="/pages" className="mt-4 inline-flex items-center gap-1 text-sm text-blue-600 hover:underline">
-          <ArrowLeft size={14} /> Back to pages
-        </Link>
+        <div className="flex items-center gap-3 mt-4">
+          <Link to="/pages" className="inline-flex items-center gap-1 text-sm text-blue-600 hover:underline">
+            <ArrowLeft size={14} /> Back to list
+          </Link>
+        </div>
       </div>
     );
   }
@@ -209,9 +211,15 @@ export default function ChildPages() {
     <div className="max-w-3xl mx-auto">
       {/* Header */}
       <div className="mb-6">
-        <Link to={`/page/${id}`} className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-blue-600 transition-colors mb-2">
-          <ArrowLeft size={14} /> Back to parent page
-        </Link>
+        <div className="flex items-center gap-3 mb-2">
+          <Link to="/pages" className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-blue-600 transition-colors">
+            <ArrowLeft size={14} /> Back to list
+          </Link>
+          <span className="text-gray-300 dark:text-gray-600">/</span>
+          <Link to={`/page/${id}`} className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-blue-600 transition-colors">
+            {parentTitle}
+          </Link>
+        </div>
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <span>📁</span>
           <span>Child pages of "{parentTitle}"</span>
