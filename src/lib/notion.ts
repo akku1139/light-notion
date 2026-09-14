@@ -74,7 +74,11 @@ export async function getBlocks(blockId: string): Promise<{ results: NotionBlock
   return notionRequest(`/v1/blocks/${blockId}/children?page_size=100`, { method: 'GET' }) as Promise<{ results: NotionBlock[]; has_more: boolean; next_cursor: string | null }>;
 }
 
-export async function getChildPages(pageId: string): Promise<NotionPage[]> {
+export async function getChildPages(pageId: string, depth = 0, maxDepth = 3): Promise<NotionPage[]> {
+  if (depth >= maxDepth) {
+    return [];
+  }
+
   const { results } = await getBlocks(pageId);
   
   // Filter for child_page blocks
@@ -91,7 +95,14 @@ export async function getChildPages(pageId: string): Promise<NotionPage[]> {
     })
   );
   
-  return childPages;
+  // Recursively get grandchild pages
+  const allPages = [...childPages];
+  for (const childPage of childPages) {
+    const grandchildPages = await getChildPages(childPage.id, depth + 1, maxDepth);
+    allPages.push(...grandchildPages);
+  }
+  
+  return allPages;
 }
 
 export async function searchPages(query: string, startCursor?: string | null): Promise<{ results: NotionPage[]; has_more: boolean; next_cursor: string | null }> {

@@ -43,6 +43,7 @@ describe('ChildPages', () => {
   it('should display child pages list', async () => {
     const mockParentPage = {
       id: 'parent-id',
+      parent: { type: 'workspace', workspace: true },
       properties: {
         title: {
           id: 'title',
@@ -70,6 +71,7 @@ describe('ChildPages', () => {
     const mockChildPages = [
       {
         id: 'child-1',
+        parent: { type: 'page_id', page_id: 'parent-id' },
         icon: { type: 'emoji', emoji: '📄' },
         properties: {
           title: {
@@ -97,6 +99,7 @@ describe('ChildPages', () => {
       },
       {
         id: 'child-2',
+        parent: { type: 'page_id', page_id: 'parent-id' },
         icon: { type: 'emoji', emoji: '📝' },
         properties: {
           title: {
@@ -181,6 +184,7 @@ describe('ChildPages', () => {
   it('should display file icon when page has no icon', async () => {
     const mockParentPage = {
       id: 'parent-id',
+      parent: { type: 'workspace', workspace: true },
       properties: {
         title: {
           id: 'title',
@@ -208,6 +212,7 @@ describe('ChildPages', () => {
     const mockChildPages = [
       {
         id: 'child-1',
+        parent: { type: 'page_id', page_id: 'parent-id' },
         icon: null,
         properties: {
           title: {
@@ -251,6 +256,7 @@ describe('ChildPages', () => {
   it('should create correct links to child pages', async () => {
     const mockParentPage = {
       id: 'parent-id',
+      parent: { type: 'workspace', workspace: true },
       properties: {
         title: {
           id: 'title',
@@ -278,6 +284,7 @@ describe('ChildPages', () => {
     const mockChildPages = [
       {
         id: 'child-1',
+        parent: { type: 'page_id', page_id: 'parent-id' },
         icon: { type: 'emoji', emoji: '📄' },
         properties: {
           title: {
