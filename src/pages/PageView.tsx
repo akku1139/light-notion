@@ -1,10 +1,24 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Edit, Clock, ExternalLink, Loader2, FolderOpen } from 'lucide-react';
-import { getPage, getBlocks, getPageTitle, getChildPages, type NotionPage, type NotionBlock } from '../lib/notion';
+import { ArrowLeft, Edit, Clock, ExternalLink, Loader2, FolderOpen, Smile } from 'lucide-react';
+import { getPage, getBlocks, getPageTitle, getChildPages, updatePageIcon, type NotionPage, type NotionBlock } from '../lib/notion';
 import { blocksToMarkdown } from '../lib/markdown';
 import MarkdownRenderer from '../components/MarkdownRenderer';
 import TableOfContents from '../components/TableOfContents';
+
+// よく使われる絵文字のリスト
+const COMMON_EMOJIS = [
+  '📄', '📝', '📋', '📌', '📎', '📁', '📂', '📊', '📈', '📉',
+  '✨', '⭐', '🌟', '💫', '🔥', '💡', '💭', '💬', '📢', '📣',
+  '🎯', '🎨', '🎭', '🎪', '🎫', '🎬', '🎤', '🎧', '🎵', '🎶',
+  '🚀', '🚁', '🚂', '🚗', '🚕', '🚙', '🚌', '🚎', '🏎️', '🚓',
+  '❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💔',
+  '✅', '❌', '⭕', '❗', '❓', '💯', '🔴', '🟢', '🔵', '⚫',
+  '👍', '👎', '👏', '🙌', '👋', '🤝', '🙏', '💪', '✌️', '🤞',
+  '🌈', '☀️', '🌙', '⚡', '☁️', '🌊', '🔥', '💧', '🌸', '🌺',
+  '🍎', '🍊', '🍋', '🍌', '🍉', '🍇', '🍓', '🫐', '🍈', '🍒',
+  '🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯',
+];
 
 export default function PageView() {
   const { id } = useParams<{ id: string }>();
@@ -17,10 +31,27 @@ export default function PageView() {
   const [hasMore, setHasMore] = useState(false);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [childPageCount, setChildPageCount] = useState(0);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [updatingIcon, setUpdatingIcon] = useState(false);
   const observerRef = useRef<HTMLDivElement>(null);
   const loadingMoreRef = useRef(false);
   const hasMoreRef = useRef(false);
   const nextCursorRef = useRef<string | null>(null);
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
+
+  // 絵文字ピッカーの外側をクリックしたら閉じる
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target as Node)) {
+        setShowEmojiPicker(false);
+      }
+    };
+
+    if (showEmojiPicker) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showEmojiPicker]);
 
   useEffect(() => {
     if (page) {
@@ -113,6 +144,28 @@ export default function PageView() {
 
     loadPage();
   }, [id]);
+
+  const handleEmojiSelect = async (emoji: string) => {
+    if (!id) return;
+    
+    setUpdatingIcon(true);
+    try {
+      const updatedPage = await updatePageIcon(id, emoji);
+      setPage(updatedPage);
+      setShowEmojiPicker(false);
+      
+      // ファビコンも更新
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">${emoji}</text></svg>`;
+      const favicon = document.querySelector('link[rel="icon"]') as HTMLLinkElement;
+      if (favicon) {
+        favicon.href = `data:image/svg+xml,${encodeURIComponent(svg)}`;
+      }
+    } catch (err) {
+      console.error('Failed to update icon:', err);
+    } finally {
+      setUpdatingIcon(false);
+    }
+  };
 
   // Infinite scroll with IntersectionObserver
   useEffect(() => {
@@ -210,9 +263,41 @@ export default function PageView() {
       {/* Title */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
-          {page.icon && page.icon.type === 'emoji' && (
-            <span className="text-4xl">{page.icon.emoji}</span>
-          )}
+          <div className="relative" ref={emojiPickerRef}>
+            <button
+              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+              className="text-4xl hover:scale-110 transition-transform relative"
+              title="Change emoji"
+            >
+              {page.icon && page.icon.type === 'emoji' ? page.icon.emoji : '📄'}
+              {updatingIcon && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-full">
+                  <Loader2 size={20} className="animate-spin text-white" />
+                </div>
+              )}
+            </button>
+            
+            {/* Emoji Picker */}
+            {showEmojiPicker && (
+              <div className="absolute top-full left-0 mt-2 p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 w-72">
+                <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">
+                  Choose an emoji
+                </div>
+                <div className="grid grid-cols-8 gap-1 max-h-48 overflow-y-auto">
+                  {COMMON_EMOJIS.map((emoji) => (
+                    <button
+                      key={emoji}
+                      onClick={() => handleEmojiSelect(emoji)}
+                      className="text-2xl hover:bg-gray-100 dark:hover:bg-gray-700 rounded p-1 transition-colors"
+                      title={emoji}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{title}</h1>
         </div>
         <div className="flex items-center gap-2 text-sm text-gray-500">

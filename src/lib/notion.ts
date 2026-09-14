@@ -124,6 +124,13 @@ export async function updatePageProperties(pageId: string, properties: Record<st
   }) as Promise<NotionPage>;
 }
 
+export async function updatePageIcon(pageId: string, emoji: string): Promise<NotionPage> {
+  return notionRequest(`/v1/pages/${pageId}`, {
+    method: 'PATCH',
+    body: { icon: { type: 'emoji', emoji } },
+  }) as Promise<NotionPage>;
+}
+
 export async function appendBlocks(blockId: string, children: unknown[]): Promise<{ results: NotionBlock[] }> {
   return notionRequest(`/v1/blocks/${blockId}/children`, {
     method: 'PATCH',
