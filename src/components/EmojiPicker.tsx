@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Search, X } from 'lucide-react';
 
-// カテゴリ分けされた絵文字リスト
+// Categorized emoji list
 const EMOJI_CATEGORIES = {
   'Smileys & People': [
     '😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '🙃',
@@ -164,7 +164,7 @@ export default function EmojiPicker({ onSelect, onClose }: EmojiPickerProps) {
   const [selectedCategory, setSelectedCategory] = useState<keyof typeof EMOJI_CATEGORIES>('Smileys & People');
   const pickerRef = useRef<HTMLDivElement>(null);
 
-  // 絵文字ピッカーの外側をクリックしたら閉じる
+  // Close when clicking outside the emoji picker
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (pickerRef.current && !pickerRef.current.contains(event.target as Node)) {
@@ -176,7 +176,7 @@ export default function EmojiPicker({ onSelect, onClose }: EmojiPickerProps) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [onClose]);
 
-  // 検索クエリに基づいて絵文字をフィルタリング
+  // Filter emojis based on search query
   const filteredEmojis = searchQuery
     ? Object.values(EMOJI_CATEGORIES).flat().filter(emoji => emoji.includes(searchQuery))
     : EMOJI_CATEGORIES[selectedCategory];
@@ -186,14 +186,14 @@ export default function EmojiPicker({ onSelect, onClose }: EmojiPickerProps) {
       ref={pickerRef}
       className="absolute top-full left-0 mt-2 p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 w-80"
     >
-      {/* 検索ボックス */}
+      {/* Search box */}
       <div className="relative mb-3">
         <Search size={16} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
         <input
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="絵文字を検索..."
+          placeholder="Search emojis..."
           className="w-full pl-8 pr-8 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded-md bg-white dark:bg-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
         />
         {searchQuery && (
@@ -206,7 +206,7 @@ export default function EmojiPicker({ onSelect, onClose }: EmojiPickerProps) {
         )}
       </div>
 
-      {/* カテゴリタブ */}
+      {/* Category tabs */}
       {!searchQuery && (
         <div className="flex gap-1 mb-3 overflow-x-auto pb-2">
           {Object.keys(EMOJI_CATEGORIES).map((category) => (
@@ -225,7 +225,7 @@ export default function EmojiPicker({ onSelect, onClose }: EmojiPickerProps) {
         </div>
       )}
 
-      {/* 絵文字グリッド */}
+      {/* Emoji grid */}
       <div className="grid grid-cols-8 gap-1 max-h-48 overflow-y-auto">
         {filteredEmojis.map((emoji, index) => (
           <button
@@ -241,7 +241,7 @@ export default function EmojiPicker({ onSelect, onClose }: EmojiPickerProps) {
 
       {filteredEmojis.length === 0 && (
         <div className="text-center py-4 text-sm text-gray-500">
-          絵文字が見つかりません
+          No emojis found
         </div>
       )}
     </div>
