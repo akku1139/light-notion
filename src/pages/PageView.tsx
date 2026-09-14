@@ -26,6 +26,14 @@ export default function PageView() {
     if (page) {
       const title = getPageTitle(page);
       document.title = `${title} - Notion Lite`;
+      
+      // Set favicon from page icon
+      const emoji = page.icon?.type === 'emoji' ? page.icon.emoji : '📄';
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">${emoji}</text></svg>`;
+      const favicon = document.querySelector('link[rel="icon"]') as HTMLLinkElement;
+      if (favicon) {
+        favicon.href = `data:image/svg+xml,${encodeURIComponent(svg)}`;
+      }
     }
   }, [page]);
 
