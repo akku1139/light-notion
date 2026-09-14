@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useLayoutEffect, ReactNode } from 'react';
 
 type Theme = 'light' | 'dark' | 'system';
 
@@ -15,6 +15,15 @@ function getSystemTheme(): 'light' | 'dark' {
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
+function applyTheme(resolved: 'light' | 'dark') {
+  if (typeof document === 'undefined') return;
+  if (resolved === 'dark') {
+    document.documentElement.classList.add('dark');
+  } else {
+    document.documentElement.classList.remove('dark');
+  }
+}
+
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => {
     if (typeof window === 'undefined') return 'system';
@@ -29,42 +38,26 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     return theme;
   });
 
+  // Use useLayoutEffect to apply theme before browser paint
+  useLayoutEffect(() => {
+    applyTheme(resolvedTheme);
+  }, [resolvedTheme]);
+
   const setTheme = (newTheme: Theme) => {
     setThemeState(newTheme);
     localStorage.setItem('theme', newTheme);
     
     const resolved = newTheme === 'system' ? getSystemTheme() : newTheme;
     setResolvedTheme(resolved);
-    
-    if (resolved === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
   };
 
   useEffect(() => {
-    // Apply theme on mount
-    const resolved = theme === 'system' ? getSystemTheme() : theme;
-    setResolvedTheme(resolved);
-    
-    if (resolved === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-
     // Listen for system theme changes
     if (theme === 'system') {
       const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
       const handleChange = () => {
         const newResolved = getSystemTheme();
         setResolvedTheme(newResolved);
-        if (newResolved === 'dark') {
-          document.documentElement.classList.add('dark');
-        } else {
-          document.documentElement.classList.remove('dark');
-        }
       };
       mediaQuery.addEventListener('change', handleChange);
       return () => mediaQuery.removeEventListener('change', handleChange);
