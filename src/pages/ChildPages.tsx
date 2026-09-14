@@ -1,12 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { FileText, ArrowLeft, Clock, ChevronRight } from 'lucide-react';
-import { getChildPages, getPage, getPageTitle, type NotionPage } from '../lib/notion';
-
-interface TreeNode {
-  page: NotionPage;
-  children: TreeNode[];
-}
+import { getPage, getPageTitle, type NotionPage } from '../lib/notion';
+import { usePageTree, type TreeNode } from '../contexts/PageTreeContext';
 
 interface TreeNodeComponentProps {
   node: TreeNode;
@@ -98,44 +94,43 @@ function TreeNodeComponent({ node, depth, expandedNodes, toggleNode, formatDate 
 export default function ChildPages() {
   const { id } = useParams<{ id: string }>();
   const [parentPage, setParentPage] = useState<NotionPage | null>(null);
-  const [childPages, setChildPages] = useState<NotionPage[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
+  const { tree, findNodeById } = usePageTree();
 
   useEffect(() => {
     if (!id) return;
 
-    const loadChildPages = async () => {
+    const loadParentPage = async () => {
       setLoading(true);
       setError(null);
 
       try {
-        const [parent, children] = await Promise.all([
-          getPage(id),
-          getChildPages(id),
-        ]);
+        const parent = await getPage(id);
         setParentPage(parent);
-        setChildPages(children);
         
-        // Expand root nodes by default
-        const rootIds = new Set<string>();
-        children.forEach(page => {
-          const parentId = page.parent.type === 'page_id' ? page.parent.page_id : null;
-          if (!parentId || !children.some(p => p.id === parentId)) {
-            rootIds.add(page.id);
-          }
-        });
-        setExpandedNodes(rootIds);
+        // Find the node in the tree
+        const node = findNodeById(id);
+        if (node && node.children.length > 0) {
+          // Expand all children by default
+          const childIds = new Set<string>();
+          const collectChildIds = (node: TreeNode) => {
+            childIds.add(node.page.id);
+            node.children.forEach(child => collectChildIds(child));
+          };
+          node.children.forEach(child => collectChildIds(child));
+          setExpandedNodes(childIds);
+        }
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load child pages');
+        setError(err instanceof Error ? err.message : 'Failed to load parent page');
       } finally {
         setLoading(false);
       }
     };
 
-    loadChildPages();
-  }, [id]);
+    loadParentPage();
+  }, [id, findNodeById]);
 
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString('ja-JP', {
@@ -143,31 +138,6 @@ export default function ChildPages() {
       month: 'short',
       day: 'numeric',
     });
-  };
-
-  // Build tree structure from flat page list
-  const buildTree = (pages: NotionPage[]): TreeNode[] => {
-    const pageMap = new Map<string, TreeNode>();
-    const roots: TreeNode[] = [];
-
-    // First pass: create nodes
-    pages.forEach(page => {
-      pageMap.set(page.id, { page, children: [] });
-    });
-
-    // Second pass: build tree
-    pages.forEach(page => {
-      const node = pageMap.get(page.id)!;
-      const parentId = page.parent.type === 'page_id' ? page.parent.page_id : null;
-      
-      if (parentId && pageMap.has(parentId)) {
-        pageMap.get(parentId)!.children.push(node);
-      } else {
-        roots.push(node);
-      }
-    });
-
-    return roots;
   };
 
   const toggleNode = (pageId: string) => {
@@ -206,6 +176,8 @@ export default function ChildPages() {
   }
 
   const parentTitle = parentPage ? getPageTitle(parentPage) : 'Parent Page';
+  const parentNode = id ? findNodeById(id) : null;
+  const childNodes = parentNode?.children || [];
 
   return (
     <div className="max-w-3xl mx-auto">
@@ -224,17 +196,17 @@ export default function ChildPages() {
           <span>📁</span>
           <span>Child pages of "{parentTitle}"</span>
         </h1>
-        <p className="text-sm text-gray-500 mt-1">{childPages.length} child page{childPages.length !== 1 ? 's' : ''}</p>
+        <p className="text-sm text-gray-500 mt-1">{childNodes.length} child page{childNodes.length !== 1 ? 's' : ''}</p>
       </div>
 
       {/* Child pages tree */}
-      {childPages.length === 0 ? (
+      {childNodes.length === 0 ? (
         <div className="text-center py-12 text-gray-500">
           <p>No child pages found.</p>
         </div>
       ) : (
         <div className="space-y-1">
-          {buildTree(childPages).map(node => (
+          {childNodes.map(node => (
             <TreeNodeComponent
               key={node.page.id}
               node={node}

@@ -2,27 +2,42 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { useEffect } from 'react';
 import ChildPages from './ChildPages';
 import * as notionModule from '../lib/notion';
+import { PageTreeProvider, usePageTree, type TreeNode } from '../contexts/PageTreeContext';
 
 describe('ChildPages', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  const renderWithRouter = (pageId: string) => {
+  const renderWithRouter = (pageId: string, initialTree: TreeNode[] = []) => {
+    const TestWrapper = () => {
+      const { setTree } = usePageTree();
+      
+      useEffect(() => {
+        setTree(initialTree);
+      }, [initialTree, setTree]);
+      
+      return (
+        <MemoryRouter initialEntries={[`/pages/${pageId}`]}>
+          <Routes>
+            <Route path="/pages/:id" element={<ChildPages />} />
+          </Routes>
+        </MemoryRouter>
+      );
+    };
+    
     return render(
-      <MemoryRouter initialEntries={[`/pages/${pageId}`]}>
-        <Routes>
-          <Route path="/pages/:id" element={<ChildPages />} />
-        </Routes>
-      </MemoryRouter>
+      <PageTreeProvider>
+        <TestWrapper />
+      </PageTreeProvider>
     );
   };
 
   it('should display loading state initially', () => {
     vi.spyOn(notionModule, 'getPage').mockImplementation(() => new Promise(() => {}));
-    vi.spyOn(notionModule, 'getChildPages').mockImplementation(() => new Promise(() => {}));
 
     renderWithRouter('parent-id');
 
@@ -31,7 +46,6 @@ describe('ChildPages', () => {
 
   it('should display error state when loading fails', async () => {
     vi.spyOn(notionModule, 'getPage').mockRejectedValue(new Error('Failed to load'));
-    vi.spyOn(notionModule, 'getChildPages').mockRejectedValue(new Error('Failed to load'));
 
     renderWithRouter('parent-id');
 
@@ -127,10 +141,16 @@ describe('ChildPages', () => {
       },
     ] as any;
 
-    vi.spyOn(notionModule, 'getPage').mockResolvedValue(mockParentPage);
-    vi.spyOn(notionModule, 'getChildPages').mockResolvedValue(mockChildPages);
+    const mockTree: TreeNode[] = [
+      {
+        page: mockParentPage,
+        children: mockChildPages.map((child: any) => ({ page: child, children: [] })),
+      },
+    ];
 
-    renderWithRouter('parent-id');
+    vi.spyOn(notionModule, 'getPage').mockResolvedValue(mockParentPage);
+
+    renderWithRouter('parent-id', mockTree);
 
     await waitFor(() => {
       expect(screen.getByText('Child pages of "Parent Page"')).toBeTruthy();
@@ -171,10 +191,16 @@ describe('ChildPages', () => {
       },
     } as any;
 
-    vi.spyOn(notionModule, 'getPage').mockResolvedValue(mockParentPage);
-    vi.spyOn(notionModule, 'getChildPages').mockResolvedValue([]);
+    const mockTree: TreeNode[] = [
+      {
+        page: mockParentPage,
+        children: [],
+      },
+    ];
 
-    renderWithRouter('parent-id');
+    vi.spyOn(notionModule, 'getPage').mockResolvedValue(mockParentPage);
+
+    renderWithRouter('parent-id', mockTree);
 
     await waitFor(() => {
       expect(screen.getByText('No child pages found.')).toBeTruthy();
@@ -240,10 +266,16 @@ describe('ChildPages', () => {
       },
     ] as any;
 
-    vi.spyOn(notionModule, 'getPage').mockResolvedValue(mockParentPage);
-    vi.spyOn(notionModule, 'getChildPages').mockResolvedValue(mockChildPages);
+    const mockTree: TreeNode[] = [
+      {
+        page: mockParentPage,
+        children: mockChildPages.map((child: any) => ({ page: child, children: [] })),
+      },
+    ];
 
-    renderWithRouter('parent-id');
+    vi.spyOn(notionModule, 'getPage').mockResolvedValue(mockParentPage);
+
+    renderWithRouter('parent-id', mockTree);
 
     await waitFor(() => {
       expect(screen.getByText('Child Page')).toBeTruthy();
@@ -312,10 +344,16 @@ describe('ChildPages', () => {
       },
     ] as any;
 
-    vi.spyOn(notionModule, 'getPage').mockResolvedValue(mockParentPage);
-    vi.spyOn(notionModule, 'getChildPages').mockResolvedValue(mockChildPages);
+    const mockTree: TreeNode[] = [
+      {
+        page: mockParentPage,
+        children: mockChildPages.map((child: any) => ({ page: child, children: [] })),
+      },
+    ];
 
-    renderWithRouter('parent-id');
+    vi.spyOn(notionModule, 'getPage').mockResolvedValue(mockParentPage);
+
+    renderWithRouter('parent-id', mockTree);
 
     await waitFor(() => {
       const link = screen.getByRole('link', { name: /Child Page/i });
