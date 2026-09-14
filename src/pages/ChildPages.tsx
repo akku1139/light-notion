@@ -92,7 +92,7 @@ export default function ChildPages() {
               <Link
                 key={page.id}
                 to={`/page/${page.id}`}
-                className="block bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md hover:border-blue-300 dark:hover:border-blue-700 transition-all group"
+                className="block bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md hover:border-blue-300 dark:hover:border-blue-700 transition-all group overflow-hidden"
               >
                 <div className="flex items-start gap-3">
                   <div className="flex-shrink-0 mt-0.5">
@@ -102,14 +102,14 @@ export default function ChildPages() {
                       <FileText size={24} className="text-gray-400" />
                     )}
                   </div>
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-0 overflow-hidden">
                     <h3 className="font-semibold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors truncate">
                       {title}
                     </h3>
                     <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
-                      <span className="flex items-center gap-1">
-                        <Clock size={12} />
-                        {formatDate(page.last_edited_time)}
+                      <span className="flex items-center gap-1 min-w-0">
+                        <Clock size={12} className="flex-shrink-0" />
+                        <span className="truncate">{formatDate(page.last_edited_time)}</span>
                       </span>
                     </div>
                   </div>
