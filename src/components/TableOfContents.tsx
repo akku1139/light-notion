@@ -201,13 +201,7 @@ const TableOfContents = memo(function TableOfContents({ content, onLoadMore, has
         </div>
         <button
           onClick={() => {
-            if (headings.length > 0) {
-              const firstHeading = document.querySelector(`[data-toc-id="${headings[0].id}"]`) as HTMLElement;
-              if (firstHeading) {
-                firstHeading.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                // handleScroll will naturally update activeId as the page scrolls
-              }
-            }
+            window.scrollTo({ top: 0, behavior: 'smooth' });
           }}
           className="text-xs px-2 py-1 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
           title="Scroll to top"

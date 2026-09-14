@@ -4,11 +4,7 @@ import { FileText, Clock, RefreshCw, Database, Globe, Loader2, ChevronRight } fr
 import { queryDatabase, searchPages, getPageTitle, getPageExcerpt, type NotionPage } from '../lib/notion';
 import { getDatabaseId } from '../lib/auth';
 import { getCachedPages, setCachedPages, clearCache } from '../lib/cache';
-
-interface TreeNode {
-  page: NotionPage;
-  children: TreeNode[];
-}
+import { usePageTree, type TreeNode } from '../contexts/PageTreeContext';
 
 interface TreeNodeComponentProps {
   node: TreeNode;
@@ -109,6 +105,7 @@ export default function PageList() {
   const [hasMore, setHasMore] = useState(false);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
+  const { setTree } = usePageTree();
 
   const databaseId = getDatabaseId();
   const isDatabaseMode = !!databaseId;
@@ -217,6 +214,9 @@ export default function PageList() {
         roots.push(node);
       }
     });
+
+    // Save tree to context
+    setTree(roots);
 
     return roots;
   };

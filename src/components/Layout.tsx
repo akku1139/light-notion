@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { FileText, Search, Settings, Home } from 'lucide-react';
 import { isAuthenticated } from '../lib/auth';
@@ -9,6 +10,16 @@ interface LayoutProps {
 export default function Layout({ children }: LayoutProps) {
   const location = useLocation();
   const authenticated = isAuthenticated();
+
+  // Reset favicon to default when not on a page view
+  useEffect(() => {
+    if (!location.pathname.startsWith('/page/')) {
+      const favicon = document.querySelector('link[rel="icon"]') as HTMLLinkElement;
+      if (favicon) {
+        favicon.href = 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📄</text></svg>';
+      }
+    }
+  }, [location.pathname]);
 
   const navItems = [
     { path: '/', label: 'Home', icon: Home },

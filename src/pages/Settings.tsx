@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Key, Database, Check, ExternalLink } from 'lucide-react';
+import { Key, Database, Check, ExternalLink, Sun, Moon, Monitor } from 'lucide-react';
 import { getToken, setToken, removeToken, getDatabaseId, setDatabaseId, removeDatabaseId, isAuthenticated } from '../lib/auth';
+import { useTheme } from '../contexts/ThemeContext';
 
 export default function Settings() {
   const navigate = useNavigate();
   const [token, setTokenState] = useState(getToken() || '');
   const [databaseId, setDatabaseIdState] = useState(getDatabaseId() || '');
   const [saved, setSaved] = useState(false);
+  const { theme, setTheme } = useTheme();
 
   useEffect(() => {
     document.title = 'Settings - Notion Lite';
@@ -83,6 +85,52 @@ export default function Settings() {
             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-sm
               focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
           />
+        </div>
+
+        {/* Theme */}
+        <div>
+          <label className="flex items-center gap-2 text-sm font-semibold mb-2">
+            <Sun size={16} className="text-gray-500" />
+            Theme
+          </label>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+            Choose your preferred color theme.
+          </p>
+          <div className="grid grid-cols-3 gap-2">
+            <button
+              onClick={() => setTheme('light')}
+              className={`flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all ${
+                theme === 'light'
+                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                  : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+              }`}
+            >
+              <Sun size={24} className={theme === 'light' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400'} />
+              <span className="text-sm font-medium">Light</span>
+            </button>
+            <button
+              onClick={() => setTheme('dark')}
+              className={`flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all ${
+                theme === 'dark'
+                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                  : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+              }`}
+            >
+              <Moon size={24} className={theme === 'dark' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400'} />
+              <span className="text-sm font-medium">Dark</span>
+            </button>
+            <button
+              onClick={() => setTheme('system')}
+              className={`flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all ${
+                theme === 'system'
+                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                  : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+              }`}
+            >
+              <Monitor size={24} className={theme === 'system' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400'} />
+              <span className="text-sm font-medium">System</span>
+            </button>
+          </div>
         </div>
 
         {/* Actions */}

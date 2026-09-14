@@ -247,7 +247,9 @@ export async function blocksToMarkdown(blocks: NotionBlock[]): Promise<string> {
         // Block-level equation - extract from equation property
         const equationData = (data as Record<string, unknown>).expression as string | undefined;
         const equationText = equationData || text;
-        lines.push(`$$${equationText}$$`);
+        // Remove newlines and extra spaces for proper KaTeX rendering
+        const cleanEquation = equationText.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
+        lines.push(`$$${cleanEquation}$$`);
         lines.push('');
         break;
       }
