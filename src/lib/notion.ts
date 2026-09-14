@@ -82,50 +82,12 @@ export async function getChildPages(pageId: string): Promise<NotionPage[]> {
     'type' in block && block.type === 'child_page'
   );
   
-  // Get page details for each child page
+  // Get full page details for each child page to get icon information
   const childPages = await Promise.all(
     childPageBlocks.map(async (block) => {
-      const childPageData = block.child_page as { title?: string } | undefined;
-      const title = childPageData?.title || 'Untitled';
-      
-      // Extract icon from block
-      const icon = (block as any).icon || null;
-      
-      // Create a minimal page object
-      return {
-        id: block.id,
-        object: 'page' as const,
-        created_time: block.created_time,
-        last_edited_time: block.last_edited_time,
-        parent: block.parent,
-        archived: false,
-        url: `https://notion.so/${block.id.replace(/-/g, '')}`,
-        public_url: null,
-        icon: icon,
-        cover: null,
-        properties: {
-          title: {
-            id: 'title',
-            type: 'title',
-            title: [
-              {
-                type: 'text',
-                text: { content: title, link: null },
-                annotations: {
-                  bold: false,
-                  italic: false,
-                  strikethrough: false,
-                  underline: false,
-                  code: false,
-                  color: 'default',
-                },
-                plain_text: title,
-                href: null,
-              },
-            ],
-          },
-        },
-      } as unknown as NotionPage;
+      // Fetch the full page to get icon and other properties
+      const fullPage = await getPage(block.id);
+      return fullPage;
     })
   );
   
