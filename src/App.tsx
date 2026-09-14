@@ -8,23 +8,26 @@ import ChildPages from './pages/ChildPages';
 import SearchPage from './pages/Search';
 import Settings from './pages/Settings';
 import { PageTreeProvider } from './contexts/PageTreeContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <PageTreeProvider>
-        <Layout>
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/pages" element={<PageList />} />
-            <Route path="/pages/:id" element={<ChildPages />} />
-            <Route path="/page/:id" element={<PageView />} />
-            <Route path="/edit/:id" element={<PageEdit />} />
-            <Route path="/search" element={<SearchPage />} />
-            <Route path="/settings" element={<Settings />} />
-          </Routes>
-        </Layout>
-      </PageTreeProvider>
-    </BrowserRouter>
+    <ThemeProvider>
+      <BrowserRouter>
+        <PageTreeProvider>
+          <Layout>
+            <Routes>
+              <Route path="/" element={<HomePage />} />
+              <Route path="/pages" element={<PageList />} />
+              <Route path="/pages/:id" element={<ChildPages />} />
+              <Route path="/page/:id" element={<PageView />} />
+              <Route path="/edit/:id" element={<PageEdit />} />
+              <Route path="/search" element={<SearchPage />} />
+              <Route path="/settings" element={<Settings />} />
+            </Routes>
+          </Layout>
+        </PageTreeProvider>
+      </BrowserRouter>
+    </ThemeProvider>
   );
 }
