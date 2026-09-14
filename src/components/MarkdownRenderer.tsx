@@ -3,6 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
+import rehypeRaw from 'rehype-raw';
 import { createHighlighter, type BundledLanguage, type BundledTheme } from 'shiki';
 import { Link } from 'react-router-dom';
 
@@ -238,7 +239,7 @@ const MarkdownRenderer = memo(function MarkdownRenderer({ content }: MarkdownRen
       prose-code:text-sm prose-code:font-mono
       prose-code:before:content-none prose-code:after:content-none">      <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkMath]}
-        rehypePlugins={[rehypeKatex]}
+        rehypePlugins={[rehypeRaw, rehypeKatex]}
         components={{
           code({ className, children, ...props }) {
             const match = /language-(\w+)/.exec(className || '');
