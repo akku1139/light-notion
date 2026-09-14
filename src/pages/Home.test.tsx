@@ -46,9 +46,8 @@ describe('Home', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText('Browse Pages')).toBeTruthy();
-    expect(screen.getByText('Search')).toBeTruthy();
-    expect(screen.getByText('Settings')).toBeTruthy();
+    expect(screen.getByText('Get Started')).toBeTruthy();
+    expect(screen.getAllByText('Settings').length).toBeGreaterThan(0);
   });
 
   it('should display authentication status when not authenticated', () => {
@@ -61,7 +60,8 @@ describe('Home', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText('API Token: Not configured')).toBeTruthy();
+    expect(screen.getByText('API Token')).toBeTruthy();
+    expect(screen.getByText('Not configured')).toBeTruthy();
   });
 
   it('should display authentication status when authenticated', () => {
@@ -74,7 +74,8 @@ describe('Home', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText('API Token: Configured ✓')).toBeTruthy();
+    expect(screen.getByText('API Token')).toBeTruthy();
+    expect(screen.getByText('Configured')).toBeTruthy();
   });
 
   it('should display database status when database ID is set', () => {
@@ -87,7 +88,8 @@ describe('Home', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText('Database: Set ✓')).toBeTruthy();
+    expect(screen.getByText('Database Mode')).toBeTruthy();
+    expect(screen.getByText('Specific Database')).toBeTruthy();
   });
 
   it('should display database status when database ID is not set', () => {
@@ -100,7 +102,8 @@ describe('Home', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText('Database: Not set (optional)')).toBeTruthy();
+    expect(screen.getByText('Database Mode')).toBeTruthy();
+    expect(screen.getByText('Entire Workspace')).toBeTruthy();
   });
 
   it('should display feature list', () => {
@@ -113,10 +116,9 @@ describe('Home', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText('Features')).toBeTruthy();
-    expect(screen.getByText(/Browse pages from a database or entire workspace/)).toBeTruthy();
-    expect(screen.getByText(/View pages with Markdown rendering/)).toBeTruthy();
-    expect(screen.getByText(/Edit pages/)).toBeTruthy();
-    expect(screen.getByText(/Full-text search/)).toBeTruthy();
+    expect(screen.getByText('Powerful Features')).toBeTruthy();
+    expect(screen.getByText('Workspace & Database Mode')).toBeTruthy();
+    expect(screen.getByText('Rich Markdown Rendering')).toBeTruthy();
+    expect(screen.getByText('Full-Text Search')).toBeTruthy();
   });
 });
