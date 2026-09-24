@@ -17,6 +17,11 @@ interface RichTextItem {
   href?: string | null;
 }
 
+// Escape special characters in markdown (outside code blocks)
+function escapeMarkdown(text: string): string {
+  return text.replace(/([\\*~`$[\]<>{}|^])/g, '\\$1');
+}
+
 function richTextToMarkdown(items: RichTextItem[]): string {
   return items.map(item => {
     // Handle inline equations
@@ -28,10 +33,29 @@ function richTextToMarkdown(items: RichTextItem[]): string {
     if (!text) return '';
 
     const ann = item.annotations;
-    if (ann?.code) text = `\`${text}\``;
+    
+    // Apply formatting in correct order
+    if (ann?.code) {
+      text = `\`${text}\``;
+    } else {
+      // Escape special characters only outside code blocks
+      text = escapeMarkdown(text);
+    }
+    
     if (ann?.bold) text = `**${text}**`;
     if (ann?.italic) text = `*${text}*`;
     if (ann?.strikethrough) text = `~~${text}~~`;
+    
+    // Handle underline with span tag
+    if (ann?.underline) {
+      text = `<span underline="true">${text}</span>`;
+    }
+    
+    // Handle color with span tag
+    if (ann?.color && ann.color !== 'default') {
+      text = `<span color="${ann.color}">${text}</span>`;
+    }
+    
     if (item.href) text = `[${text}](${item.href})`;
 
     return text;
@@ -102,7 +126,8 @@ export function resolveReferenceLinks(text: string): string {
 export async function blocksToMarkdown(blocks: NotionBlock[]): Promise<string> {
   const lines: string[] = [];
 
-  for (const block of blocks) {
+  for (let i = 0; i < blocks.length; i++) {
+    const block = blocks[i];
     if (!('type' in block)) continue;
     
     const blockType = block.type;
@@ -111,39 +136,66 @@ export async function blocksToMarkdown(blocks: NotionBlock[]): Promise<string> {
 
     const richText = (data.rich_text || []) as RichTextItem[];
     let text = richTextToMarkdown(richText);
+    
+    // Get block color if present
+    const blockColor = (data as Record<string, unknown>).color as string | undefined;
+    const colorAttr = blockColor && blockColor !== 'default' ? ` {color="${blockColor}"}` : '';
+
+    // Check if next block is a list item
+    const nextBlock = i + 1 < blocks.length ? blocks[i + 1] : null;
+    const nextBlockType = nextBlock && 'type' in nextBlock ? nextBlock.type : null;
+    const isNextBlockListItem = nextBlockType === 'bulleted_list_item' || 
+                                nextBlockType === 'numbered_list_item' || 
+                                nextBlockType === 'to_do';
 
     switch (blockType) {
       case 'paragraph':
-        lines.push(text);
+        if (!text) {
+          lines.push('<empty-block/>');
+        } else {
+          lines.push(text + colorAttr);
+        }
         lines.push('');
         break;
 
       case 'heading_1':
-        lines.push(`# ${text}`);
+        lines.push(`# ${text}${colorAttr}`);
         lines.push('');
         break;
 
       case 'heading_2':
-        lines.push(`## ${text}`);
+        lines.push(`## ${text}${colorAttr}`);
         lines.push('');
         break;
 
       case 'heading_3':
-        lines.push(`### ${text}`);
+        lines.push(`### ${text}${colorAttr}`);
         lines.push('');
         break;
 
       case 'bulleted_list_item':
-        lines.push(`- ${text}`);
+        lines.push(`- ${text}${colorAttr}`);
+        // Add blank line after list if next block is not a list item
+        if (!isNextBlockListItem) {
+          lines.push('');
+        }
         break;
 
       case 'numbered_list_item':
-        lines.push(`1. ${text}`);
+        lines.push(`1. ${text}${colorAttr}`);
+        // Add blank line after list if next block is not a list item
+        if (!isNextBlockListItem) {
+          lines.push('');
+        }
         break;
 
       case 'to_do': {
         const checked = (data as Record<string, unknown>).checked ? 'x' : ' ';
-        lines.push(`- [${checked}] ${text}`);
+        lines.push(`- [${checked}] ${text}${colorAttr}`);
+        // Add blank line after list if next block is not a list item
+        if (!isNextBlockListItem) {
+          lines.push('');
+        }
         break;
       }
 
@@ -154,15 +206,19 @@ export async function blocksToMarkdown(blocks: NotionBlock[]): Promise<string> {
 
       case 'code': {
         const language = ((data as Record<string, unknown>).language as string) || '';
+        // For code blocks, use raw text without escaping
+        const codeText = richText.map(item => item.plain_text).join('');
         lines.push(`\`\`\`${language}`);
-        lines.push(text);
+        lines.push(codeText);
         lines.push('```');
         lines.push('');
         break;
       }
 
       case 'quote':
-        lines.push(`> ${text}`);
+        // Replace newlines with <br> tags for multi-line quotes
+        const quoteText = text.replace(/\n/g, '<br>');
+        lines.push(`> ${quoteText}${colorAttr}`);
         lines.push('');
         break;
 
@@ -174,7 +230,9 @@ export async function blocksToMarkdown(blocks: NotionBlock[]): Promise<string> {
       case 'callout': {
         const icon = (data as Record<string, unknown>).icon as { emoji?: string } | undefined;
         const emoji = icon?.emoji || '💡';
-        lines.push(`> ${emoji} ${text}`);
+        lines.push(`<callout icon="${emoji}"${colorAttr ? colorAttr.replace(' {', ' ').replace('}', '"}').replace('color=', 'color="') : ''}>`);
+        lines.push(`\t${text}`);
+        lines.push('</callout>');
         lines.push('');
         break;
       }
@@ -208,9 +266,10 @@ export async function blocksToMarkdown(blocks: NotionBlock[]): Promise<string> {
             const childrenData = await getBlocks(blockId);
             const rows = childrenData.results;
             const hasHeader = (data as Record<string, unknown>).has_column_header as boolean;
+            const hasColumnHeader = (data as Record<string, unknown>).has_column_header as boolean;
             
             if (rows.length > 0) {
-              // Convert table rows to markdown
+              // Convert table rows to HTML format
               const tableRows: string[][] = [];
               
               for (const row of rows) {
@@ -219,19 +278,25 @@ export async function blocksToMarkdown(blocks: NotionBlock[]): Promise<string> {
                 if (!rowData) continue;
                 
                 const cells = (rowData.cells || []) as RichTextItem[][];
-                const cellTexts = cells.map(cell => richTextToMarkdown(cell).replace(/\|/g, '\\|').replace(/\n/g, ' '));
+                const cellTexts = cells.map(cell => richTextToMarkdown(cell));
                 tableRows.push(cellTexts);
               }
               
               if (tableRows.length > 0) {
-                // Header row
-                lines.push('| ' + tableRows[0].join(' | ') + ' |');
-                // Separator
-                lines.push('| ' + tableRows[0].map(() => '---').join(' | ') + ' |');
-                // Data rows
-                for (let i = 1; i < tableRows.length; i++) {
-                  lines.push('| ' + tableRows[i].join(' | ') + ' |');
+                // Generate HTML table
+                lines.push(`<table${hasHeader ? ' header-row="true"' : ''}${hasColumnHeader ? ' header-column="true"' : ''}>`);
+                
+                // Render rows
+                for (let rowIndex = 0; rowIndex < tableRows.length; rowIndex++) {
+                  const row = tableRows[rowIndex];
+                  lines.push('\t<tr>');
+                  for (const cell of row) {
+                    lines.push(`\t\t<td>${cell}</td>`);
+                  }
+                  lines.push('\t</tr>');
                 }
+                
+                lines.push('</table>');
                 lines.push('');
               }
             }
@@ -247,7 +312,9 @@ export async function blocksToMarkdown(blocks: NotionBlock[]): Promise<string> {
         // Block-level equation - extract from equation property
         const equationData = (data as Record<string, unknown>).expression as string | undefined;
         const equationText = equationData || text;
-        lines.push(`$$${equationText}$$`);
+        // Remove newlines and extra spaces for proper KaTeX rendering
+        const cleanEquation = equationText.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
+        lines.push(`$$${cleanEquation}$$`);
         lines.push('');
         break;
       }

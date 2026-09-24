@@ -74,6 +74,37 @@ export async function getBlocks(blockId: string): Promise<{ results: NotionBlock
   return notionRequest(`/v1/blocks/${blockId}/children?page_size=100`, { method: 'GET' }) as Promise<{ results: NotionBlock[]; has_more: boolean; next_cursor: string | null }>;
 }
 
+export async function getChildPages(pageId: string, depth = 0, maxDepth = 3): Promise<NotionPage[]> {
+  if (depth >= maxDepth) {
+    return [];
+  }
+
+  const { results } = await getBlocks(pageId);
+  
+  // Filter for child_page blocks
+  const childPageBlocks = results.filter((block): block is Extract<NotionBlock, { type: 'child_page' }> => 
+    'type' in block && block.type === 'child_page'
+  );
+  
+  // Get full page details for each child page to get icon and other properties
+  const childPages = await Promise.all(
+    childPageBlocks.map(async (block) => {
+      // Fetch the full page to get icon and other properties
+      const fullPage = await getPage(block.id);
+      return fullPage;
+    })
+  );
+  
+  // Recursively get grandchild pages
+  const allPages = [...childPages];
+  for (const childPage of childPages) {
+    const grandchildPages = await getChildPages(childPage.id, depth + 1, maxDepth);
+    allPages.push(...grandchildPages);
+  }
+  
+  return allPages;
+}
+
 export async function searchPages(query: string, startCursor?: string | null): Promise<{ results: NotionPage[]; has_more: boolean; next_cursor: string | null }> {
   const body: Record<string, unknown> = {
     query,
@@ -90,6 +121,13 @@ export async function updatePageProperties(pageId: string, properties: Record<st
   return notionRequest(`/v1/pages/${pageId}`, {
     method: 'PATCH',
     body: { properties },
+  }) as Promise<NotionPage>;
+}
+
+export async function updatePageIcon(pageId: string, emoji: string): Promise<NotionPage> {
+  return notionRequest(`/v1/pages/${pageId}`, {
+    method: 'PATCH',
+    body: { icon: { type: 'emoji', emoji } },
   }) as Promise<NotionPage>;
 }
 

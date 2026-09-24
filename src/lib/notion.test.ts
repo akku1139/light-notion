@@ -1,6 +1,14 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { getPageTitle, getPageExcerpt } from './notion';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { getPageTitle, getPageExcerpt, getChildPages, getBlocks } from './notion';
 import type { NotionPage } from './notion';
+
+vi.mock('./notion', async () => {
+  const actual = await vi.importActual<typeof import('./notion')>('./notion');
+  return {
+    ...actual,
+    getBlocks: vi.fn(),
+  };
+});
 
 describe('notion helpers', () => {
   describe('getPageTitle', () => {
@@ -158,4 +166,7 @@ describe('notion helpers', () => {
       expect(getPageExcerpt(page)).toBe('');
     });
   });
+
+  // Note: getChildPages tests are covered in ChildPages.test.tsx
+  // Testing the integration at the component level is more reliable
 });

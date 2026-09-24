@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Edit, Clock, ExternalLink, Loader2 } from 'lucide-react';
-import { getPage, getBlocks, getPageTitle, type NotionPage, type NotionBlock } from '../lib/notion';
+import { ArrowLeft, Edit, Clock, ExternalLink, Loader2, FolderOpen } from 'lucide-react';
+import { getPage, getBlocks, getPageTitle, getChildPages, updatePageIcon, type NotionPage, type NotionBlock } from '../lib/notion';
 import { blocksToMarkdown } from '../lib/markdown';
 import MarkdownRenderer from '../components/MarkdownRenderer';
 import TableOfContents from '../components/TableOfContents';
+import EmojiPicker from '../components/EmojiPicker';
 
 export default function PageView() {
   const { id } = useParams<{ id: string }>();
@@ -16,15 +17,41 @@ export default function PageView() {
   const [error, setError] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [childPageCount, setChildPageCount] = useState(0);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [updatingIcon, setUpdatingIcon] = useState(false);
   const observerRef = useRef<HTMLDivElement>(null);
   const loadingMoreRef = useRef(false);
   const hasMoreRef = useRef(false);
   const nextCursorRef = useRef<string | null>(null);
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
+
+  // 絵文字ピッカーの外側をクリックしたら閉じる
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target as Node)) {
+        setShowEmojiPicker(false);
+      }
+    };
+
+    if (showEmojiPicker) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showEmojiPicker]);
 
   useEffect(() => {
     if (page) {
       const title = getPageTitle(page);
       document.title = `${title} - Notion Lite`;
+      
+      // Set favicon from page icon
+      const emoji = page.icon?.type === 'emoji' ? page.icon.emoji : '📄';
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">${emoji}</text></svg>`;
+      const favicon = document.querySelector('link[rel="icon"]') as HTMLLinkElement;
+      if (favicon) {
+        favicon.href = `data:image/svg+xml,${encodeURIComponent(svg)}`;
+      }
     }
   }, [page]);
 
@@ -83,9 +110,10 @@ export default function PageView() {
       setLoading(true);
       setError(null);
       try {
-        const [pageData, blocksData] = await Promise.all([
+        const [pageData, blocksData, childPages] = await Promise.all([
           getPage(id),
           getBlocks(id),
+          getChildPages(id),
         ]);
         setPage(pageData);
         setBlocks(blocksData.results);
@@ -93,6 +121,7 @@ export default function PageView() {
         setMarkdown(markdownText);
         setHasMore(blocksData.has_more);
         setNextCursor(blocksData.next_cursor);
+        setChildPageCount(childPages.length);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load page');
       } finally {
@@ -102,6 +131,28 @@ export default function PageView() {
 
     loadPage();
   }, [id]);
+
+  const handleEmojiSelect = async (emoji: string) => {
+    if (!id) return;
+    
+    setUpdatingIcon(true);
+    try {
+      const updatedPage = await updatePageIcon(id, emoji);
+      setPage(updatedPage);
+      setShowEmojiPicker(false);
+      
+      // ファビコンも更新
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">${emoji}</text></svg>`;
+      const favicon = document.querySelector('link[rel="icon"]') as HTMLLinkElement;
+      if (favicon) {
+        favicon.href = `data:image/svg+xml,${encodeURIComponent(svg)}`;
+      }
+    } catch (err) {
+      console.error('Failed to update icon:', err);
+    } finally {
+      setUpdatingIcon(false);
+    }
+  };
 
   // Infinite scroll with IntersectionObserver
   useEffect(() => {
@@ -159,6 +210,15 @@ export default function PageView() {
           <ArrowLeft size={16} /> Back to list
         </Link>
         <div className="flex items-center gap-2">
+          {childPageCount > 0 && (
+            <Link
+              to={`/pages/${page.id}`}
+              className="flex items-center gap-1 px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              title={`View ${childPageCount} child page${childPageCount !== 1 ? 's' : ''}`}
+            >
+              <FolderOpen size={14} /> {childPageCount}
+            </Link>
+          )}
           <a
             href={page.url}
             target="_blank"
@@ -190,9 +250,28 @@ export default function PageView() {
       {/* Title */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
-          {page.icon && page.icon.type === 'emoji' && (
-            <span className="text-4xl">{page.icon.emoji}</span>
-          )}
+          <div className="relative" ref={emojiPickerRef}>
+            <button
+              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+              className="text-4xl hover:scale-110 transition-transform relative"
+              title="Change emoji"
+            >
+              {page.icon && page.icon.type === 'emoji' ? page.icon.emoji : '📄'}
+              {updatingIcon && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-full">
+                  <Loader2 size={20} className="animate-spin text-white" />
+                </div>
+              )}
+            </button>
+            
+            {/* Emoji Picker */}
+            {showEmojiPicker && (
+              <EmojiPicker
+                onSelect={handleEmojiSelect}
+                onClose={() => setShowEmojiPicker(false)}
+              />
+            )}
+          </div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{title}</h1>
         </div>
         <div className="flex items-center gap-2 text-sm text-gray-500">
