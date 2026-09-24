@@ -102,7 +102,8 @@ export function resolveReferenceLinks(text: string): string {
 export async function blocksToMarkdown(blocks: NotionBlock[]): Promise<string> {
   const lines: string[] = [];
 
-  for (const block of blocks) {
+  for (let i = 0; i < blocks.length; i++) {
+    const block = blocks[i];
     if (!('type' in block)) continue;
     
     const blockType = block.type;
@@ -111,6 +112,13 @@ export async function blocksToMarkdown(blocks: NotionBlock[]): Promise<string> {
 
     const richText = (data.rich_text || []) as RichTextItem[];
     let text = richTextToMarkdown(richText);
+
+    // Check if next block is a list item
+    const nextBlock = i + 1 < blocks.length ? blocks[i + 1] : null;
+    const nextBlockType = nextBlock && 'type' in nextBlock ? nextBlock.type : null;
+    const isNextBlockListItem = nextBlockType === 'bulleted_list_item' || 
+                                nextBlockType === 'numbered_list_item' || 
+                                nextBlockType === 'to_do';
 
     switch (blockType) {
       case 'paragraph':
@@ -135,15 +143,27 @@ export async function blocksToMarkdown(blocks: NotionBlock[]): Promise<string> {
 
       case 'bulleted_list_item':
         lines.push(`- ${text}`);
+        // Add blank line after list if next block is not a list item
+        if (!isNextBlockListItem) {
+          lines.push('');
+        }
         break;
 
       case 'numbered_list_item':
         lines.push(`1. ${text}`);
+        // Add blank line after list if next block is not a list item
+        if (!isNextBlockListItem) {
+          lines.push('');
+        }
         break;
 
       case 'to_do': {
         const checked = (data as Record<string, unknown>).checked ? 'x' : ' ';
         lines.push(`- [${checked}] ${text}`);
+        // Add blank line after list if next block is not a list item
+        if (!isNextBlockListItem) {
+          lines.push('');
+        }
         break;
       }
 

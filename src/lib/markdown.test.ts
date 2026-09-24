@@ -188,6 +188,188 @@ describe('blocksToMarkdown', () => {
     expect(markdown).toContain('- Item 1');
     expect(markdown).toContain('1. Item 2');
   });
+
+  it('should add blank line after list when followed by paragraph', async () => {
+    const blocks: NotionBlock[] = [
+      {
+        id: '1',
+        type: 'bulleted_list_item',
+        has_children: false,
+        bulleted_list_item: {
+          rich_text: [
+            {
+              type: 'text',
+              plain_text: 'List item 1',
+              annotations: {
+                bold: false,
+                italic: false,
+                strikethrough: false,
+                underline: false,
+                code: false,
+                color: 'default',
+              },
+            },
+          ],
+          color: 'default',
+        },
+      } as NotionBlock,
+      {
+        id: '2',
+        type: 'paragraph',
+        has_children: false,
+        paragraph: {
+          rich_text: [
+            {
+              type: 'text',
+              plain_text: 'Paragraph after list',
+              annotations: {
+                bold: false,
+                italic: false,
+                strikethrough: false,
+                underline: false,
+                code: false,
+                color: 'default',
+              },
+            },
+          ],
+          color: 'default',
+        },
+      } as NotionBlock,
+    ];
+
+    const markdown = await blocksToMarkdown(blocks);
+    // Should have blank line between list and paragraph
+    expect(markdown).toContain('- List item 1\n\nParagraph after list');
+  });
+
+  it('should not add blank line between consecutive list items', async () => {
+    const blocks: NotionBlock[] = [
+      {
+        id: '1',
+        type: 'bulleted_list_item',
+        has_children: false,
+        bulleted_list_item: {
+          rich_text: [
+            {
+              type: 'text',
+              plain_text: 'List item 1',
+              annotations: {
+                bold: false,
+                italic: false,
+                strikethrough: false,
+                underline: false,
+                code: false,
+                color: 'default',
+              },
+            },
+          ],
+          color: 'default',
+        },
+      } as NotionBlock,
+      {
+        id: '2',
+        type: 'bulleted_list_item',
+        has_children: false,
+        bulleted_list_item: {
+          rich_text: [
+            {
+              type: 'text',
+              plain_text: 'List item 2',
+              annotations: {
+                bold: false,
+                italic: false,
+                strikethrough: false,
+                underline: false,
+                code: false,
+                color: 'default',
+              },
+            },
+          ],
+          color: 'default',
+        },
+      } as NotionBlock,
+    ];
+
+    const markdown = await blocksToMarkdown(blocks);
+    // Should not have blank line between list items
+    expect(markdown).toContain('- List item 1\n- List item 2');
+    expect(markdown).not.toContain('- List item 1\n\n- List item 2');
+  });
+
+  it('should handle mixed list types correctly', async () => {
+    const blocks: NotionBlock[] = [
+      {
+        id: '1',
+        type: 'bulleted_list_item',
+        has_children: false,
+        bulleted_list_item: {
+          rich_text: [
+            {
+              type: 'text',
+              plain_text: 'Bullet item',
+              annotations: {
+                bold: false,
+                italic: false,
+                strikethrough: false,
+                underline: false,
+                code: false,
+                color: 'default',
+              },
+            },
+          ],
+          color: 'default',
+        },
+      } as NotionBlock,
+      {
+        id: '2',
+        type: 'numbered_list_item',
+        has_children: false,
+        numbered_list_item: {
+          rich_text: [
+            {
+              type: 'text',
+              plain_text: 'Numbered item',
+              annotations: {
+                bold: false,
+                italic: false,
+                strikethrough: false,
+                underline: false,
+                code: false,
+                color: 'default',
+              },
+            },
+          ],
+          color: 'default',
+        },
+      } as NotionBlock,
+      {
+        id: '3',
+        type: 'paragraph',
+        has_children: false,
+        paragraph: {
+          rich_text: [
+            {
+              type: 'text',
+              plain_text: 'Final paragraph',
+              annotations: {
+                bold: false,
+                italic: false,
+                strikethrough: false,
+                underline: false,
+                code: false,
+                color: 'default',
+              },
+            },
+          ],
+          color: 'default',
+        },
+      } as NotionBlock,
+    ];
+
+    const markdown = await blocksToMarkdown(blocks);
+    // Should have blank line only after the last list item
+    expect(markdown).toContain('- Bullet item\n1. Numbered item\n\nFinal paragraph');
+  });
 });
 
 describe('resolveReferenceLinks', () => {
