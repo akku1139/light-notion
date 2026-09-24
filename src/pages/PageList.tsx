@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import { Link } from 'react-router-dom';
 import { FileText, Clock, RefreshCw, Database, Globe, Loader2, ChevronRight } from 'lucide-react';
 import { queryDatabase, searchPages, getPageTitle, getPageExcerpt, type NotionPage } from '../lib/notion';
@@ -14,7 +14,7 @@ interface TreeNodeComponentProps {
   formatDate: (dateStr: string) => string;
 }
 
-function TreeNodeComponent({ node, depth, expandedNodes, toggleNode, formatDate }: TreeNodeComponentProps) {
+const TreeNodeComponent = memo(function TreeNodeComponent({ node, depth, expandedNodes, toggleNode, formatDate }: TreeNodeComponentProps) {
   const { page, children } = node;
   const title = getPageTitle(page);
   const excerpt = getPageExcerpt(page);
@@ -95,7 +95,7 @@ function TreeNodeComponent({ node, depth, expandedNodes, toggleNode, formatDate 
       )}
     </div>
   );
-}
+});
 
 export default function PageList() {
   const [pages, setPages] = useState<NotionPage[]>([]);
@@ -118,7 +118,7 @@ export default function PageList() {
     }
   }, [isDatabaseMode]);
 
-  const loadPages = async (cursor?: string, forceRefresh = false) => {
+  const loadPages = useCallback(async (cursor?: string, forceRefresh = false) => {
     setLoading(!cursor);
     setLoadingMore(!!cursor);
     setError(null);
@@ -173,28 +173,28 @@ export default function PageList() {
       setLoading(false);
       setLoadingMore(false);
     }
-  };
+  }, [databaseId, isDatabaseMode]);
 
   useEffect(() => {
     loadPages();
-  }, [databaseId]);
+  }, [loadPages]);
 
-  const handleLoadMore = () => {
-    if (nextCursor) {
+  const handleLoadMore = useCallback(() => {
+    if (nextCursor && !loadingMore) {
       loadPages(nextCursor);
     }
-  };
+  }, [nextCursor, loadingMore, loadPages]);
 
-  const formatDate = (dateStr: string) => {
+  const formatDate = useCallback((dateStr: string) => {
     return new Date(dateStr).toLocaleDateString('ja-JP', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
     });
-  };
+  }, []);
 
-  // Build tree structure from flat page list
-  const buildTree = (pages: NotionPage[]): TreeNode[] => {
+  // Build tree structure from flat page list - memoized to prevent unnecessary recalculations
+  const treeNodes = useMemo(() => {
     const pageMap = new Map<string, TreeNode>();
     const roots: TreeNode[] = [];
 
@@ -215,13 +215,15 @@ export default function PageList() {
       }
     });
 
-    // Save tree to context
-    setTree(roots);
-
     return roots;
-  };
+  }, [pages]);
 
-  const toggleNode = (pageId: string) => {
+  // Update tree in context only when treeNodes change
+  useEffect(() => {
+    setTree(treeNodes);
+  }, [treeNodes, setTree]);
+
+  const toggleNode = useCallback((pageId: string) => {
     setExpandedNodes(prev => {
       const next = new Set(prev);
       if (next.has(pageId)) {
@@ -231,7 +233,7 @@ export default function PageList() {
       }
       return next;
     });
-  };
+  }, []);
 
   return (
     <div>
@@ -293,7 +295,7 @@ export default function PageList() {
       ) : (
         <>
           <div className="space-y-1">
-            {buildTree(pages).map(node => (
+            {treeNodes.map(node => (
               <TreeNodeComponent
                 key={node.page.id}
                 node={node}
@@ -310,7 +312,7 @@ export default function PageList() {
             <div className="mt-6 text-center">
               <button
                 onClick={handleLoadMore}
-                disabled={loadingMore}
+                disabled={loadingMore || loading}
                 className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 inline-flex items-center gap-2"
               >
                 {loadingMore ? (
